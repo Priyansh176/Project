@@ -5,6 +5,12 @@ import { authMiddleware, type AuthLocals } from '../middleware/auth.js';
 
 const router = Router();
 
+const COLLEGE_EMAIL_SUFFIX = '@nith.ac.in';
+
+function isCollegeEmail(email: string): boolean {
+  return typeof email === 'string' && email.toLowerCase().endsWith(COLLEGE_EMAIL_SUFFIX);
+}
+
 type StudentRow = { id: number; name: string; roll_no: string; email: string; department: string; semester: number; cgpa: number | null; password_hash: string; approved: number; email_verified: number };
 type AdminRow = { id: number; email: string; password_hash: string };
 
@@ -16,7 +22,12 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ error: 'Missing or invalid fields: name, roll_no, email, department, semester, password' });
       return;
     }
-    const existing = await query<{ id: number }[]>('SELECT id FROM students WHERE email = ? OR roll_no = ?', [email, roll_no]);
+    const emailStr = String(email).trim().toLowerCase();
+    if (!isCollegeEmail(emailStr)) {
+      res.status(400).json({ error: 'Only official college email (@nith.ac.in) is allowed' });
+      return;
+    }
+    const existing = await query<{ id: number }[]>('SELECT id FROM students WHERE email = ? OR roll_no = ?', [emailStr, roll_no]);
     if (existing.length > 0) {
       res.status(409).json({ error: 'Email or roll number already registered' });
       return;
@@ -24,7 +35,7 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
     const password_hash = await hashPassword(String(password));
     await query(
       'INSERT INTO students (name, roll_no, email, department, semester, password_hash) VALUES (?, ?, ?, ?, ?, ?)',
-      [String(name), String(roll_no), String(email), String(department), Number(semester), password_hash]
+      [String(name), String(roll_no), emailStr, String(department), Number(semester), password_hash]
     );
     res.status(201).json({ message: 'Signup successful. Await admin approval.' });
   } catch (err) {

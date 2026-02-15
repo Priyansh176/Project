@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { AuthCard } from '@/components/AuthCard';
+import { PasswordInput } from '@/components/PasswordInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,7 +47,7 @@ export function Login() {
               <Input
                 id="email_or_roll"
                 type="text"
-                placeholder="Roll number or email"
+                placeholder="Roll number or rollnumber@nith.ac.in"
                 value={emailOrRoll}
                 onChange={(e) => setEmailOrRoll(e.target.value)}
                 autoComplete="username"
@@ -55,9 +56,8 @@ export function Login() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS preferences (
   id INT AUTO_INCREMENT PRIMARY KEY,
   student_id INT NOT NULL,
   course_id INT NOT NULL,
-  rank INT NOT NULL,
+  `rank` INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY unique_student_course (student_id, course_id),
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,

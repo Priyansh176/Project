@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { AuthCard } from '@/components/AuthCard';
+import { PasswordInput } from '@/components/PasswordInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,12 +41,17 @@ export function Signup() {
       setError('Password must be at least 6 characters');
       return;
     }
+    const emailLower = email.trim().toLowerCase();
+    if (!emailLower.endsWith('@nith.ac.in')) {
+      setError('Only official college email (@nith.ac.in) is allowed');
+      return;
+    }
     setLoading(true);
     try {
       await signup({
         name: name.trim(),
         roll_no: rollNo.trim(),
-        email: email.trim(),
+        email: emailLower,
         department,
         semester: Number(semester),
         password,
@@ -99,13 +105,13 @@ export function Signup() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">College email (@nith.ac.in)</Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="college@email.com"
+              placeholder="rollnumber@nith.ac.in"
               disabled={loading}
             />
           </div>
@@ -140,9 +146,8 @@ export function Signup() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Min 6 characters"
@@ -161,9 +166,8 @@ export function Signup() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm">Confirm Password</Label>
-            <Input
+            <PasswordInput
               id="confirm"
-              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm password"
