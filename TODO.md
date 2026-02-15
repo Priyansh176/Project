@@ -1,252 +1,226 @@
 # College Course Allotment Portal – Todo List
 
-Features broken down into steps from:
-- **tech_stack.md** – Architecture, stack, deployment
-- **design_doc.md** – UI/UX, pages, components
-- **course_allotment_prd.md** – Requirements, schema, flows
+This file breaks down features from the PRD, design doc, and tech stack into actionable implementation steps.
 
 ---
 
-## Phase 1 – Foundation & Setup
+## Phase 1 – MVP
 
-### 1.1 Project structure & tooling
-- [ ] Create `/frontend`, `/backend`, `/prisma`, `/docs` folder structure
-- [ ] Initialize frontend: Next.js + TypeScript + Tailwind CSS
-- [ ] Initialize backend: Node.js + NestJS (or Express) + TypeScript
-- [ ] Set up Prisma with PostgreSQL (Supabase/Neon/AWS RDS)
-- [ ] Configure ESLint, Prettier, and shared TypeScript config
-- [ ] Set up GitHub repo and basic CI (GitHub Actions)
+### 1. Project Setup & Infrastructure
 
-### 1.2 Design system (design_doc.md)
-- [ ] Define color palette: Primary gradient (#6366F1 → #8B5CF6), backgrounds (#F5F7FB, #0F172A), success/warning/error
-- [ ] Set up typography: Inter or Poppins, heading/body/button weights
-- [ ] Implement 8px spacing grid; card padding 16–24px; section spacing 32px
-- [ ] Add shadcn/ui and create base components: Sidebar, Header Bar, Cards, Tables, Progress bars, Badges, Modals
-- [ ] Support dark + light theme (design constraint)
+- [ ] **1.1** Create repo structure: `/frontend`, `/backend`, `/docs`
+- [ ] **1.2** Initialize frontend: React + TypeScript + Vite
+- [ ] **1.3** Add Tailwind CSS and shadcn/ui to frontend
+- [ ] **1.4** Initialize backend: Node.js + Express + TypeScript
+- [ ] **1.5** Set up MySQL database (local + connection config)
+- [ ] **1.6** Add environment variables (.env.example for frontend and backend)
+- [ ] **1.7** Configure ESLint/Prettier for frontend and backend
 
 ---
 
-## Phase 2 – Authentication
+### 2. Authentication
 
-### 2.1 Auth backend
-- [ ] Implement JWT (access + refresh tokens)
-- [ ] Password hashing with bcrypt
-- [ ] Role-based access: Student / Admin / Faculty
-- [ ] `POST /auth/signup` – name, roll_no, email, department, semester, password
-- [ ] `POST /auth/login` – roll no/email + password
-- [ ] Password reset flow
-- [ ] Email verification flow (signup → verify → admin approval → login)
+#### 2.1 Backend Auth
 
-### 2.2 Auth frontend – Login
-- [ ] Login page: two-column layout (left: illustration/gradient; right: login card)
-- [ ] Fields: Roll No/Email, Password; Login button; Forgot password; Signup link
-- [ ] Inline validation and loading spinner
-- [ ] Auto redirect by role (student → dashboard, admin → admin dashboard)
-- [ ] Handle: invalid password, unapproved student, email not verified
+- [ ] **2.1.1** Create `Students` table (id, name, roll_no, email, department, semester, cgpa, password_hash)
+- [ ] **2.1.2** Create `Admins` table (id, email, password_hash)
+- [ ] **2.1.3** Implement bcrypt password hashing utility
+- [ ] **2.1.4** Implement JWT access + refresh token generation/validation
+- [ ] **2.1.5** POST `/auth/signup` – validate, hash password, insert student, optional email verification
+- [ ] **2.1.6** POST `/auth/login` – validate credentials, return JWT, role-based response
+- [ ] **2.1.7** POST `/auth/logout` or blacklist refresh token (if using refresh tokens)
+- [ ] **2.1.8** POST `/auth/forgot-password` – trigger password reset flow
+- [ ] **2.1.9** Middleware: verify JWT and attach user/role to request
+- [ ] **2.1.10** Role-based guards: Student-only and Admin-only routes
 
-### 2.3 Auth frontend – Signup
-- [ ] Signup page: centered card
-- [ ] Fields: Full Name, Roll Number, Email, Department dropdown, Semester dropdown, Password, Confirm Password
-- [ ] Real-time validation and password strength meter
-- [ ] Email verification notice and flow messaging
+#### 2.2 Frontend Auth
 
----
-
-## Phase 3 – Database & Core Models
-
-### 3.1 Prisma schema (PRD §7 + tech_stack)
-- [ ] **Students**: id, name, roll_no, email, department, semester, cgpa, password_hash, approval_status, email_verified
-- [ ] **Courses**: id, code, name, faculty, credits, capacity, slot
-- [ ] **Preferences**: id, student_id, course_id, rank
-- [ ] **Allotments**: id, student_id, course_id, status (allotted / waitlisted)
-- [ ] **Admins**: id, email, password_hash
-- [ ] Run migrations and seed script for dev
+- [ ] **2.2.1** Design system: set up color palette, typography (Inter/Poppins), 8px spacing grid
+- [ ] **2.2.2** Build reusable `AuthCard` component
+- [ ] **2.2.3** Login page: two-column layout (left gradient/illustration, right login card)
+- [ ] **2.2.4** Login form: Roll No/Email, Password, Login button, Forgot password, Signup link
+- [ ] **2.2.5** Inline validation and loading spinner on login
+- [ ] **2.2.6** Signup page: Full Name, Roll No, Email, Department, Semester, Password, Confirm Password
+- [ ] **2.2.7** Real-time validation and password strength meter on signup
+- [ ] **2.2.8** Store JWT (e.g. httpOnly cookie or secure storage), redirect by role (student/admin)
+- [ ] **2.2.9** Handle edge cases: invalid password, unapproved student, email not verified (error messages)
+- [ ] **2.2.10** Protected route wrapper – redirect unauthenticated users to login
 
 ---
 
-## Phase 4 – Student Experience
+### 3. Course Management (Backend)
 
-### 4.1 Student dashboard layout (design_doc §5)
-- [ ] Sidebar: Dashboard, Available Courses, My Preferences, Allotment Result, Profile, Logout
-- [ ] Header: Search, Notifications, Student avatar + name
-- [ ] Mobile: Sidebar → Hamburger menu; cards stacked vertically
-
-### 4.2 Dashboard cards
-- [ ] Profile Summary card: Name, Roll No, Department, CGPA
-- [ ] Allotment Status card: Not Started / Submitted / Allotted
-- [ ] Deadline countdown card
-
-### 4.3 Course listing page
-- [ ] Table: Course Code, Course Name, Faculty, Credits, Seats Available, Slot, Add Preference
-- [ ] Seat availability progress bar per course
-- [ ] Filters: department, semester
-- [ ] Search course
-- [ ] API: list courses with availability; student can view only
-
-### 4.4 Preference ranking page
-- [ ] Drag-and-drop ranking list (or up/down on mobile)
-- [ ] Edit rank, remove course
-- [ ] Submit button; lock after deadline
-- [ ] API: save/update preferences (student_id, course_id, rank)
-
-### 4.5 Allotment result page
-- [ ] Allotted course card(s)
-- [ ] Waitlisted courses with rank info
-- [ ] Download PDF option
-
-### 4.6 Student profile page
-- [ ] View/edit profile (within allowed fields)
-- [ ] Keyboard nav and ARIA labels (accessibility)
+- [ ] **3.1** Create `Courses` table (id, code, name, faculty, credits, capacity, slot)
+- [ ] **3.2** GET `/courses` – list courses with optional filters (department, semester)
+- [ ] **3.3** GET `/courses/:id` – single course with seat availability
+- [ ] **3.4** Admin: POST `/courses` – add course (validate, insert)
+- [ ] **3.5** Admin: PATCH `/courses/:id` – edit course
+- [ ] **3.6** Admin: DELETE `/courses/:id` – delete course (consider constraints)
+- [ ] **3.7** Compute and expose “seats available” from capacity and allotments
 
 ---
 
-## Phase 5 – Admin Experience
+### 4. Course Listing (Student Frontend)
 
-### 5.1 Admin dashboard layout (design_doc §6)
-- [ ] Sidebar: Students, Courses, Allotment, Reports, Settings
-- [ ] Dashboard cards: Total Students, Total Courses, Seat Utilization %, Pending Approvals
-
-### 5.2 Student management
-- [ ] Table: Name, Roll No, Email, CGPA, Approval Status, Actions (Approve / Reject)
-- [ ] Approve/reject students (post email verification)
-- [ ] API: list students, update approval status
-
-### 5.3 Course management
-- [ ] Add / Edit / Delete course
-- [ ] Set seat capacity and assign faculty
-- [ ] View enrolled students per course
-- [ ] API: CRUD courses
-
-### 5.4 Allotment admin page
-- [ ] “Run Allotment” button
-- [ ] Preview results before publish
-- [ ] Publish results
-- [ ] Generate waitlist
-- [ ] API: trigger allotment, preview, publish
-
-### 5.5 Reports page
-- [ ] Course-wise student list (download)
-- [ ] Student allotment report (download)
-- [ ] Seat utilization report (download)
-- [ ] Export CSV/Excel
-- [ ] API: report generation endpoints
-
-### 5.6 Settings (admin)
-- [ ] Deadlines configuration (preference submit, allotment publish)
-- [ ] Basic system settings as needed
+- [ ] **4.1** Student dashboard layout: Sidebar (Dashboard, Available Courses, My Preferences, Allotment Result, Profile, Logout)
+- [ ] **4.2** Header bar: Search, Notifications placeholder, Student avatar + name
+- [ ] **4.3** Dashboard cards: Profile Summary (name, roll no, department, CGPA), Allotment Status, Deadline countdown placeholder
+- [ ] **4.4** Course listing page: table with columns – Course Code, Name, Faculty, Credits, Seats Available, Slot, Add Preference
+- [ ] **4.5** Seat availability progress bar component
+- [ ] **4.6** Filters: department, semester dropdowns
+- [ ] **4.7** Search course (client or API-backed)
+- [ ] **4.8** “Add to preferences” action from course list (navigate or open modal)
 
 ---
 
-## Phase 6 – Allotment Engine (tech_stack §6)
+### 5. Preference Selection
 
-### 6.1 Core logic
-- [ ] Dedicated backend module (e.g. `AllotmentService`)
-- [ ] CGPA-based sorting (higher CGPA higher priority)
-- [ ] Preference ranking: process in rank order per student
-- [ ] Seat capacity checks per course
-- [ ] Waitlist generation when capacity full
-- [ ] (Future) Conflict detection (e.g. slot clash)
+#### 5.1 Backend
 
-### 6.2 Testing
-- [ ] Jest unit tests: same CGPA, full capacity, waitlist, edge cases
-- [ ] Load testing with k6 (target: allotment &lt; 10s, ~1000 concurrent users)
+- [ ] **5.1.1** Create `Preferences` table (id, student_id, course_id, rank)
+- [ ] **5.1.2** GET `/preferences` – current user’s preferences with course details
+- [ ] **5.1.3** POST/PUT `/preferences` – submit or replace ranked list (validate deadline, no duplicates, valid course ids)
+- [ ] **5.1.4** Validate preference window (configurable deadline) before allowing submit/edit
 
----
+#### 5.2 Frontend
 
-## Phase 7 – Notifications (tech_stack §7 + PRD §5.5)
-
-### 7.1 Email
-- [ ] Integrate Nodemailer + SendGrid or AWS SES
-- [ ] Allotment result email to students
-- [ ] Deadline reminder emails
-- [ ] Admin alerts (e.g. allotment complete, errors)
-- [ ] Optional: Email verification emails via same provider
-
-### 7.2 Optional SMS
-- [ ] Twilio integration for critical reminders (optional)
+- [ ] **5.2.1** “My Preferences” page with ranked list
+- [ ] **5.2.2** Drag-and-drop ranking component (e.g. PreferenceRanker)
+- [ ] **5.2.3** Edit rank, remove course from list
+- [ ] **5.2.4** Submit button – call API, show success/error
+- [ ] **5.2.5** Lock or disable editing after deadline (use deadline from API or config)
 
 ---
 
-## Phase 8 – Quality & UX
+### 6. Basic Allotment Engine
 
-### 8.1 Responsive & accessibility (design_doc §7–8)
-- [ ] Mobile: tables → scrollable cards; ranking → up/down buttons
-- [ ] Keyboard navigation
-- [ ] Color contrast (WCAG)
-- [ ] ARIA labels for forms; readable error messages
-- [ ] Target: fast load &lt; 2s per page
-
-### 8.2 Reusable components (design_doc §9)
-- [ ] AuthCard
-- [ ] CourseTable
-- [ ] PreferenceRanker
-- [ ] DashboardStats
-- [ ] NotificationToast
-
-### 8.3 Frontend stack (tech_stack)
-- [ ] State: TanStack Query (React Query)
-- [ ] Forms: React Hook Form + Zod
-- [ ] Ensure type safety end-to-end
+- [ ] **6.1** Create `Allotments` table (id, student_id, course_id, status e.g. allotted/waitlisted)
+- [ ] **6.2** Allotment module: load all preferences and student CGPAs
+- [ ] **6.3** Sort students by CGPA (descending) for priority
+- [ ] **6.4** For each student in order: try to allot courses in preference rank order
+- [ ] **6.5** Enforce seat capacity per course; mark overflow as waitlist
+- [ ] **6.6** Write allotment and waitlist results to `Allotments` table
+- [ ] **6.7** Admin-only endpoint: POST `/allotment/run` – trigger allotment run
+- [ ] **6.8** Unit tests (Jest): same CGPA, full capacity, multiple preferences, waitlist logic
 
 ---
 
-## Phase 9 – Testing & Security
+### 7. Allotment Result (Student Frontend)
 
-### 9.1 Testing (tech_stack §9 + PRD §11)
-- [ ] Backend: Jest for API and allotment logic
-- [ ] Frontend: Playwright for critical flows (login, preference submit, result view)
-- [ ] Load testing: k6 for 1000 concurrent users and allotment duration
-- [ ] Security: auth tests, bcrypt verification, JWT validation
-
-### 9.2 Monitoring (tech_stack §10)
-- [ ] Logging: Winston
-- [ ] Error tracking: Sentry
-- [ ] Data backup and recovery strategy (PRD NFR)
+- [ ] **7.1** GET `/allotments/me` or `/students/me/allotments` – current student’s allotment result
+- [ ] **7.2** Allotment Result page: allotted course card(s), waitlisted courses, rank info
+- [ ] **7.3** Optional: Download PDF for allotment result
 
 ---
 
-## Phase 10 – Deployment (tech_stack §8)
+### 8. Admin – Basic Flow
 
-### 10.1 Hosting
-- [ ] Frontend: Vercel or Render
-- [ ] Backend: Render, Railway, or AWS EC2
-- [ ] Database: Supabase, Neon, or AWS RDS (PostgreSQL)
-
-### 10.2 CI/CD
-- [ ] GitHub Actions: lint, test, build
-- [ ] Deploy frontend and backend on merge to main (or release branch)
-- [ ] Environment variables for API URLs, DB, JWT secrets, email
+- [ ] **8.1** Admin login and redirect to admin dashboard
+- [ ] **8.2** Admin layout: Sidebar – Students, Courses, Allotment, Reports, Settings
+- [ ] **8.3** Dashboard cards: Total Students, Total Courses, Seat Utilization %, Pending Approvals
+- [ ] **8.4** Student management: table – Name, Roll No, Email, CGPA, Approval Status, Actions (Approve/Reject)
+- [ ] **8.5** Backend: student approval flag and PATCH `/admin/students/:id/approve` (or bulk)
+- [ ] **8.6** Course management page: Add/Edit/Delete course, set capacity, assign faculty, list enrolled students
+- [ ] **8.7** Allotment page: “Run Allotment” button, preview results, “Publish results” (make visible to students)
 
 ---
 
-## Phase 11 – Future Improvements (from all three docs)
+## Phase 2
 
-- [ ] Redis caching
-- [ ] WebSockets for live updates
-- [ ] Conflict detection (timetable clashes) in allotment
-- [ ] Dark mode toggle (design_doc)
-- [ ] Course timetable clash visualization
-- [ ] Analytics dashboard
-- [ ] AI course recommendation module
-- [ ] Horizontal scaling
-- [ ] Mobile app, ERP integration, multi-college support (PRD)
+### 9. Admin Dashboard Completion
+
+- [ ] **9.1** Wire dashboard stats to real API (total students, courses, seat utilization, pending approvals)
+- [ ] **9.2** Pagination and search on student and course tables
+- [ ] **9.3** View enrolled students per course from course management
 
 ---
 
-## Summary Checklist
+### 10. Notifications
 
-| Phase              | Focus                    |
-|--------------------|--------------------------|
-| 1                  | Foundation & setup       |
-| 2                  | Authentication           |
-| 3                  | Database & models        |
-| 4                  | Student experience       |
-| 5                  | Admin experience         |
-| 6                  | Allotment engine         |
-| 7                  | Notifications            |
-| 8                  | Quality & UX             |
-| 9                  | Testing & monitoring     |
-| 10                 | Deployment               |
-| 11                 | Future improvements      |
+- [ ] **10.1** Backend: integrate Nodemailer + SendGrid or AWS SES
+- [ ] **10.2** Email on allotment result (allotted + waitlist) to each student
+- [ ] **10.3** Deadline reminder emails (e.g. 24h before preference deadline)
+- [ ] **10.4** Admin alerts (e.g. allotment completed, errors)
+- [ ] **10.5** Frontend: notification area in header (list recent notifications if API exists)
 
-*Last updated from tech_stack.md, design_doc.md, course_allotment_prd.md.*
+---
+
+### 11. Waitlist System
+
+- [ ] **11.1** Expose waitlist in API and student Allotment Result page (already in basic allotment; ensure UI shows it)
+- [ ] **11.2** Admin: view waitlist per course; optional “promote from waitlist” if seats free up
+- [ ] **11.3** Optional: email when moved from waitlist to allotted
+
+---
+
+## Phase 3
+
+### 12. Conflict Detection
+
+- [ ] **12.1** Define “slot” or timetable model (e.g. slot IDs per course)
+- [ ] **12.2** During allotment, reject or skip preference if it would create a slot clash for the student
+- [ ] **12.3** Unit tests: two preferences same slot, only one allotted
+- [ ] **12.4** Design: course timetable clash visualization (design doc future improvement)
+
+---
+
+### 13. Reports
+
+- [ ] **13.1** GET `/reports/course-wise-students` – course-wise student list (export CSV/Excel)
+- [ ] **13.2** GET `/reports/student-allotments` – all students and their allotments
+- [ ] **13.3** GET `/reports/seat-utilization` – per-course utilization %
+- [ ] **13.4** Reports page in admin: download buttons for each report (CSV/Excel)
+- [ ] **13.5** Use a library (e.g. exceljs) for Excel export if needed
+
+---
+
+### 14. Analytics Dashboard & Performance
+
+- [ ] **14.1** Analytics dashboard: charts for seat utilization, applications per course, etc.
+- [ ] **14.2** Ensure allotment process completes in &lt;10 seconds (optimize queries, batch inserts)
+- [ ] **14.3** Load testing with k6 for ~1000 concurrent users
+- [ ] **14.4** Frontend: lazy loading, code splitting; aim &lt;2s load per page
+
+---
+
+## Cross-Cutting & Polish
+
+### 15. Design System & Responsive
+
+- [ ] **15.1** Implement sidebar → hamburger menu on mobile
+- [ ] **15.2** Tables → scrollable or card layout on small screens
+- [ ] **15.3** Preference ranking: up/down buttons on mobile (alternative to drag-and-drop)
+- [ ] **15.4** Dark + light theme (design constraint): theme toggle and CSS variables
+- [ ] **15.5** Accessibility: keyboard navigation, ARIA labels, color contrast, readable errors
+
+---
+
+### 16. Testing & Quality
+
+- [ ] **16.1** Backend: Jest unit tests for allotment engine and critical API routes
+- [ ] **16.2** Frontend: Playwright e2e for login, signup, preference submit, view result
+- [ ] **16.3** Edge cases: same CGPA, full capacity, slot clashes, invalid tokens
+- [ ] **16.4** Security: auth tests, bcrypt verification, JWT expiry
+
+---
+
+### 17. DevOps & Deployment
+
+- [ ] **17.1** Database: migrations (e.g. Knex/TypeORM) for all tables
+- [ ] **17.2** CI/CD: GitHub Actions – lint, test, build frontend and backend
+- [ ] **17.3** Deploy frontend to Vercel/Render; backend to Render/Railway/AWS
+- [ ] **17.4** Database: Supabase/Neon/AWS RDS – configure and connect
+- [ ] **17.5** Logging: Winston in backend; optional error tracking (Sentry)
+- [ ] **17.6** Data backup and recovery procedure (document or automate)
+
+---
+
+## Reference
+
+- **PRD:** `course_allotment_prd.md` – scope, user flows, schema, phases
+- **Design:** `design_doc.md` – UI/UX, components, pages, flows
+- **Tech:** `tech_stack.md` – stack, folder structure, testing, hosting
+
+---
+
+*Last updated: Feb 2026*
