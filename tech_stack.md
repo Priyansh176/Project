@@ -20,10 +20,8 @@ The system will follow a modern full-stack web architecture:
 
 ## 2. Frontend Stack
 
-Framework: Next.js (React + TypeScript)  
+Framework: React.js  
 UI: Tailwind CSS + shadcn/ui  
-State Management: TanStack Query  
-Forms: React Hook Form + Zod  
 
 Reasons:
 - Scalable and industry standard
@@ -35,7 +33,7 @@ Reasons:
 ## 3. Backend Stack
 
 Runtime: Node.js  
-Framework: NestJS (recommended) or Express.js  
+Framework: Express.js  
 Language: TypeScript  
 API Style: REST  
 
@@ -43,8 +41,7 @@ API Style: REST
 
 ## 4. Database
 
-Primary Database: PostgreSQL  
-ORM: Prisma  
+Primary Database: MySQL  
 
 Reasons:
 - Strong relational support
@@ -111,8 +108,7 @@ Error Tracking: Sentry
 ## 11. Folder Structure
 
 /frontend  
-/backend  
-/prisma  
+/backend    
 /docs  
 
 ---
@@ -128,9 +124,9 @@ Error Tracking: Sentry
 
 ## Summary
 
-Frontend: Next.js + Tailwind  
-Backend: Node.js + NestJS  
-Database: PostgreSQL + Prisma  
+Frontend: React.js + Tailwind  
+Backend: Node.js 
+Database: MySQL
 Auth: JWT + bcrypt  
 Hosting: Vercel / Render / AWS  
 
