@@ -50,26 +50,26 @@ This file breaks down features from the PRD, design doc, and tech stack into act
 
 ### 3. Course Management (Backend)
 
-- [ ] **3.1** Create `Courses` table (id, code, name, faculty, credits, capacity, slot)
-- [ ] **3.2** GET `/courses` – list courses with optional filters (department, semester)
-- [ ] **3.3** GET `/courses/:id` – single course with seat availability
-- [ ] **3.4** Admin: POST `/courses` – add course (validate, insert)
-- [ ] **3.5** Admin: PATCH `/courses/:id` – edit course
-- [ ] **3.6** Admin: DELETE `/courses/:id` – delete course (consider constraints)
-- [ ] **3.7** Compute and expose “seats available” from capacity and allotments
+- [x] **3.1** Create `Courses` table (id, code, name, faculty, credits, capacity, slot) — now COURSE table
+- [x] **3.2** GET `/courses` – list courses with optional filters (department, semester)
+- [x] **3.3** GET `/courses/:id` – single course with seat availability
+- [x] **3.4** Admin: POST `/courses` – add course (validate, insert)
+- [x] **3.5** Admin: PATCH `/courses/:id` – edit course
+- [x] **3.6** Admin: DELETE `/courses/:id` – delete course (consider constraints)
+- [x] **3.7** Compute and expose “seats available” from capacity and allotments
 
 ---
 
 ### 4. Course Listing (Student Frontend)
 
-- [ ] **4.1** Student dashboard layout: Sidebar (Dashboard, Available Courses, My Preferences, Allotment Result, Profile, Logout)
-- [ ] **4.2** Header bar: Search, Notifications placeholder, Student avatar + name
-- [ ] **4.3** Dashboard cards: Profile Summary (name, roll no, department, CGPA), Allotment Status, Deadline countdown placeholder
-- [ ] **4.4** Course listing page: table with columns – Course Code, Name, Faculty, Credits, Seats Available, Slot, Add Preference
-- [ ] **4.5** Seat availability progress bar component
-- [ ] **4.6** Filters: department, semester dropdowns
-- [ ] **4.7** Search course (client or API-backed)
-- [ ] **4.8** “Add to preferences” action from course list (navigate or open modal)
+- [x] **4.1** Student dashboard layout: Sidebar (Dashboard, Available Courses, My Preferences, Allotment Result, Profile, Logout)
+- [x] **4.2** Header bar: Search, Notifications placeholder, Student avatar + name
+- [x] **4.3** Dashboard cards: Profile Summary (name, roll no, department, CGPA), Allotment Status, Deadline countdown placeholder
+- [x] **4.4** Course listing page: table with columns – Course Code, Name, Faculty, Credits, Seats Available, Slot, Add Preference
+- [x] **4.5** Seat availability progress bar component
+- [x] **4.6** Filters: department, semester dropdowns
+- [x] **4.7** Search course (client or API-backed)
+- [x] **4.8** “Add to preferences” action from course list (navigate or open modal)
 
 ---
 
@@ -77,17 +77,17 @@ This file breaks down features from the PRD, design doc, and tech stack into act
 
 #### 5.1 Backend
 
-- [ ] **5.1.1** Create `Preferences` table (id, student_id, course_id, rank)
-- [ ] **5.1.2** GET `/preferences` – current user’s preferences with course details
-- [ ] **5.1.3** POST/PUT `/preferences` – submit or replace ranked list (validate deadline, no duplicates, valid course ids)
+- [x] **5.1.1** Create `Preferences` table (id, student_id, course_id, rank) — now PREFERENCE table
+- [x] **5.1.2** GET `/preferences` – current user’s preferences with course details
+- [x] **5.1.3** POST/PUT `/preferences` – submit or replace ranked list (validate deadline, no duplicates, valid course ids)
 - [ ] **5.1.4** Validate preference window (configurable deadline) before allowing submit/edit
 
 #### 5.2 Frontend
 
-- [ ] **5.2.1** “My Preferences” page with ranked list
-- [ ] **5.2.2** Drag-and-drop ranking component (e.g. PreferenceRanker)
-- [ ] **5.2.3** Edit rank, remove course from list
-- [ ] **5.2.4** Submit button – call API, show success/error
+- [x] **5.2.1** “My Preferences” page with ranked list
+- [x] **5.2.2** Drag-and-drop ranking component (e.g. PreferenceRanker) — up/down buttons for reorder
+- [x] **5.2.3** Edit rank, remove course from list
+- [x] **5.2.4** Submit button – call API, show success/error (auto-save on reorder/remove)
 - [ ] **5.2.5** Lock or disable editing after deadline (use deadline from API or config)
 
 ---

@@ -1,9 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { StudentLayout } from '@/components/StudentLayout';
 import { Login } from '@/pages/Login';
 import { Signup } from '@/pages/Signup';
 import { Dashboard } from '@/pages/Dashboard';
+import { AvailableCourses } from '@/pages/AvailableCourses';
+import { MyPreferences } from '@/pages/MyPreferences';
+import { AllotmentResult } from '@/pages/AllotmentResult';
+import { Profile } from '@/pages/Profile';
 
 function ForgotPassword() {
   return (
@@ -25,10 +30,16 @@ export default function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <StudentLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="courses" element={<AvailableCourses />} />
+            <Route path="preferences" element={<MyPreferences />} />
+            <Route path="result" element={<AllotmentResult />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

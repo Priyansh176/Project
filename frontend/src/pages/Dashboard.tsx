@@ -1,27 +1,59 @@
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function Dashboard() {
-  const { user, role, logout } = useAuth();
+  const { user, role } = useAuth();
+
+  if (role === 'admin') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">{user?.email}</p>
+            <p className="text-sm text-muted-foreground mt-2">Students, Courses, and Allotment sections are in the sidebar.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Course Allotment Portal</h1>
-          <Button variant="outline" onClick={logout}>Logout</Button>
-        </div>
-        <div className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
-          <h2 className="text-lg font-semibold mb-2">
-            {role === 'admin' ? 'Admin' : 'Student'} Dashboard
-          </h2>
-          <p className="text-muted-foreground">
-            {user?.name && `${user.name} · `}
-            {user?.email}
-            {user?.roll_no && ` · ${user.roll_no}`}
-            {user?.department && ` · ${user.department} Sem ${user.semester}`}
-          </p>
-        </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Profile Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm">
+            <p><span className="text-muted-foreground">Name</span> {user?.name}</p>
+            <p><span className="text-muted-foreground">Roll No</span> {user?.roll_no}</p>
+            <p><span className="text-muted-foreground">Department</span> {user?.department}</p>
+            <p><span className="text-muted-foreground">Semester</span> {user?.semester}</p>
+            {user?.cgpa != null && <p><span className="text-muted-foreground">CGPA</span> {user.cgpa}</p>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Allotment Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">Not started</p>
+            <p className="text-xs text-muted-foreground mt-1">Submit preferences and wait for allotment run.</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Deadline</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">Preference deadline: TBA</p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
