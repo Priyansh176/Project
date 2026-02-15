@@ -8,13 +8,13 @@ This file breaks down features from the PRD, design doc, and tech stack into act
 
 ### 1. Project Setup & Infrastructure
 
-- [ ] **1.1** Create repo structure: `/frontend`, `/backend`, `/docs`
-- [ ] **1.2** Initialize frontend: React + TypeScript + Vite
-- [ ] **1.3** Add Tailwind CSS and shadcn/ui to frontend
-- [ ] **1.4** Initialize backend: Node.js + Express + TypeScript
-- [ ] **1.5** Set up MySQL database (local + connection config)
-- [ ] **1.6** Add environment variables (.env.example for frontend and backend)
-- [ ] **1.7** Configure ESLint/Prettier for frontend and backend
+- [x] **1.1** Create repo structure: `/frontend`, `/backend`, `/docs`
+- [x] **1.2** Initialize frontend: React + TypeScript + Vite
+- [x] **1.3** Add Tailwind CSS and shadcn/ui to frontend
+- [x] **1.4** Initialize backend: Node.js + Express + TypeScript
+- [x] **1.5** Set up MySQL database (local + connection config)
+- [x] **1.6** Add environment variables (.env.example for frontend and backend)
+- [x] **1.7** Configure ESLint/Prettier for frontend and backend
 
 ---
 
@@ -22,29 +22,29 @@ This file breaks down features from the PRD, design doc, and tech stack into act
 
 #### 2.1 Backend Auth
 
-- [ ] **2.1.1** Create `Students` table (id, name, roll_no, email, department, semester, cgpa, password_hash)
-- [ ] **2.1.2** Create `Admins` table (id, email, password_hash)
-- [ ] **2.1.3** Implement bcrypt password hashing utility
-- [ ] **2.1.4** Implement JWT access + refresh token generation/validation
-- [ ] **2.1.5** POST `/auth/signup` – validate, hash password, insert student, optional email verification
-- [ ] **2.1.6** POST `/auth/login` – validate credentials, return JWT, role-based response
-- [ ] **2.1.7** POST `/auth/logout` or blacklist refresh token (if using refresh tokens)
-- [ ] **2.1.8** POST `/auth/forgot-password` – trigger password reset flow
-- [ ] **2.1.9** Middleware: verify JWT and attach user/role to request
-- [ ] **2.1.10** Role-based guards: Student-only and Admin-only routes
+- [x] **2.1.1** Create `Students` table (id, name, roll_no, email, department, semester, cgpa, password_hash)
+- [x] **2.1.2** Create `Admins` table (id, email, password_hash)
+- [x] **2.1.3** Implement bcrypt password hashing utility
+- [x] **2.1.4** Implement JWT access + refresh token generation/validation
+- [x] **2.1.5** POST `/auth/signup` – validate, hash password, insert student, optional email verification
+- [x] **2.1.6** POST `/auth/login` – validate credentials, return JWT, role-based response
+- [x] **2.1.7** POST `/auth/logout` or blacklist refresh token (if using refresh tokens)
+- [x] **2.1.8** POST `/auth/forgot-password` – trigger password reset flow
+- [x] **2.1.9** Middleware: verify JWT and attach user/role to request
+- [x] **2.1.10** Role-based guards: Student-only and Admin-only routes
 
 #### 2.2 Frontend Auth
 
-- [ ] **2.2.1** Design system: set up color palette, typography (Inter/Poppins), 8px spacing grid
-- [ ] **2.2.2** Build reusable `AuthCard` component
-- [ ] **2.2.3** Login page: two-column layout (left gradient/illustration, right login card)
-- [ ] **2.2.4** Login form: Roll No/Email, Password, Login button, Forgot password, Signup link
-- [ ] **2.2.5** Inline validation and loading spinner on login
-- [ ] **2.2.6** Signup page: Full Name, Roll No, Email, Department, Semester, Password, Confirm Password
-- [ ] **2.2.7** Real-time validation and password strength meter on signup
-- [ ] **2.2.8** Store JWT (e.g. httpOnly cookie or secure storage), redirect by role (student/admin)
-- [ ] **2.2.9** Handle edge cases: invalid password, unapproved student, email not verified (error messages)
-- [ ] **2.2.10** Protected route wrapper – redirect unauthenticated users to login
+- [x] **2.2.1** Design system: set up color palette, typography (Inter/Poppins), 8px spacing grid
+- [x] **2.2.2** Build reusable `AuthCard` component
+- [x] **2.2.3** Login page: two-column layout (left gradient/illustration, right login card)
+- [x] **2.2.4** Login form: Roll No/Email, Password, Login button, Forgot password, Signup link
+- [x] **2.2.5** Inline validation and loading spinner on login
+- [x] **2.2.6** Signup page: Full Name, Roll No, Email, Department, Semester, Password, Confirm Password
+- [x] **2.2.7** Real-time validation and password strength meter on signup
+- [x] **2.2.8** Store JWT (e.g. httpOnly cookie or secure storage), redirect by role (student/admin)
+- [x] **2.2.9** Handle edge cases: invalid password, unapproved student, email not verified (error messages)
+- [x] **2.2.10** Protected route wrapper – redirect unauthenticated users to login
 
 ---
 
