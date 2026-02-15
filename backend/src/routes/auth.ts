@@ -11,8 +11,9 @@ function isCollegeEmail(email: string): boolean {
   return typeof email === 'string' && email.toLowerCase().endsWith(COLLEGE_EMAIL_SUFFIX);
 }
 
-type StudentRow = { id: number; name: string; roll_no: string; email: string; department: string; semester: number; cgpa: number | null; password_hash: string; approved: number; email_verified: number };
-type AdminRow = { id: number; email: string; password_hash: string };
+type StudentRow = { Roll_No: string; Name: string; Email: string; Department_ID: number | null; Semester: number; CGPA: number | null; Password: string; Status: string };
+type AdminRow = { Admin_ID: number; Name: string; Email: string; Password: string };
+type DeptRow = { Department_ID: number; Department_Name: string };
 
 // POST /auth/signup
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
@@ -27,15 +28,22 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ error: 'Only official college email (@nith.ac.in) is allowed' });
       return;
     }
-    const existing = await query<{ id: number }[]>('SELECT id FROM students WHERE email = ? OR roll_no = ?', [emailStr, roll_no]);
+    const rollNoStr = String(roll_no).trim();
+    const depts = await query<DeptRow[]>('SELECT Department_ID, Department_Name FROM DEPARTMENT WHERE Department_Name = ?', [String(department)]);
+    if (depts.length === 0) {
+      res.status(400).json({ error: 'Invalid department' });
+      return;
+    }
+    const departmentId = depts[0].Department_ID;
+    const existing = await query<{ Roll_No: string }[]>('SELECT Roll_No FROM STUDENT WHERE Email = ? OR Roll_No = ?', [emailStr, rollNoStr]);
     if (existing.length > 0) {
       res.status(409).json({ error: 'Email or roll number already registered' });
       return;
     }
-    const password_hash = await hashPassword(String(password));
+    const passwordHash = await hashPassword(String(password));
     await query(
-      'INSERT INTO students (name, roll_no, email, department, semester, password_hash) VALUES (?, ?, ?, ?, ?, ?)',
-      [String(name), String(roll_no), emailStr, String(department), Number(semester), password_hash]
+      'INSERT INTO STUDENT (Roll_No, Name, Email, Password, Department_ID, Semester, Status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [rollNoStr, String(name), emailStr, passwordHash, departmentId, Number(semester), 'inactive']
     );
     res.status(201).json({ message: 'Signup successful. Await admin approval.' });
   } catch (err) {
@@ -52,34 +60,45 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ error: 'email_or_roll and password required' });
       return;
     }
-    const students = await query<StudentRow[]>('SELECT id, name, roll_no, email, department, semester, cgpa, password_hash, approved, email_verified FROM students WHERE email = ? OR roll_no = ?', [String(email_or_roll), String(email_or_roll)]);
+    const key = String(email_or_roll).trim();
+    const students = await query<StudentRow[]>('SELECT s.Roll_No, s.Name, s.Email, s.Department_ID, s.Semester, s.CGPA, s.Password, s.Status FROM STUDENT s WHERE s.Email = ? OR s.Roll_No = ?', [key, key]);
     if (students.length > 0) {
       const student = students[0];
-      const ok = await comparePassword(String(password), student.password_hash);
+      const ok = await comparePassword(String(password), student.Password);
       if (!ok) {
         res.status(401).json({ error: 'Invalid password' });
         return;
       }
-      if (!student.approved) {
+      if (student.Status !== 'active') {
         res.status(403).json({ error: 'Account pending approval' });
         return;
       }
-      const access = signAccessToken({ sub: String(student.id), role: 'student' });
-      const refresh = signRefreshToken({ sub: String(student.id), role: 'student' });
-      res.json({ role: 'student', accessToken: access, refreshToken: refresh, user: { id: student.id, name: student.name, roll_no: student.roll_no, email: student.email, department: student.department, semester: student.semester, cgpa: student.cgpa } });
+      let departmentName: string | null = null;
+      if (student.Department_ID) {
+        const dept = await query<DeptRow[]>('SELECT Department_Name FROM DEPARTMENT WHERE Department_ID = ?', [student.Department_ID]);
+        if (dept.length > 0) departmentName = dept[0].Department_Name;
+      }
+      const access = signAccessToken({ sub: student.Roll_No, role: 'student' });
+      const refresh = signRefreshToken({ sub: student.Roll_No, role: 'student' });
+      res.json({
+        role: 'student',
+        accessToken: access,
+        refreshToken: refresh,
+        user: { id: student.Roll_No, name: student.Name, roll_no: student.Roll_No, email: student.Email, department: departmentName, semester: student.Semester, cgpa: student.CGPA },
+      });
       return;
     }
-    const admins = await query<AdminRow[]>('SELECT id, email, password_hash FROM admins WHERE email = ?', [String(email_or_roll)]);
+    const admins = await query<AdminRow[]>('SELECT Admin_ID, Name, Email, Password FROM ADMIN WHERE Email = ?', [key]);
     if (admins.length > 0) {
       const admin = admins[0];
-      const ok = await comparePassword(String(password), admin.password_hash);
+      const ok = await comparePassword(String(password), admin.Password);
       if (!ok) {
         res.status(401).json({ error: 'Invalid password' });
         return;
       }
-      const access = signAccessToken({ sub: String(admin.id), role: 'admin' });
-      const refresh = signRefreshToken({ sub: String(admin.id), role: 'admin' });
-      res.json({ role: 'admin', accessToken: access, refreshToken: refresh, user: { id: admin.id, email: admin.email } });
+      const access = signAccessToken({ sub: String(admin.Admin_ID), role: 'admin' });
+      const refresh = signRefreshToken({ sub: String(admin.Admin_ID), role: 'admin' });
+      res.json({ role: 'admin', accessToken: access, refreshToken: refresh, user: { id: admin.Admin_ID, name: admin.Name, email: admin.Email } });
       return;
     }
     res.status(401).json({ error: 'Invalid email or roll number' });

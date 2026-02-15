@@ -1,6 +1,6 @@
 /**
  * Clear all data from the database (keeps schema).
- * Tables are truncated in FK-safe order.
+ * Tables truncated in FK-safe order.
  * Usage: cd backend && npx tsx scripts/clear-data.ts
  */
 import dotenv from 'dotenv';
@@ -21,11 +21,13 @@ async function main() {
   });
 
   await conn.query('SET FOREIGN_KEY_CHECKS = 0');
-  await conn.query('TRUNCATE TABLE allotments');
-  await conn.query('TRUNCATE TABLE preferences');
-  await conn.query('TRUNCATE TABLE courses');
-  await conn.query('TRUNCATE TABLE students');
-  await conn.query('TRUNCATE TABLE admins');
+  await conn.query('TRUNCATE TABLE ENROLLMENT');
+  await conn.query('TRUNCATE TABLE PREFERENCE');
+  await conn.query('TRUNCATE TABLE ADM_IN_ACCESS');
+  await conn.query('TRUNCATE TABLE COURSE');
+  await conn.query('TRUNCATE TABLE STUDENT');
+  await conn.query('TRUNCATE TABLE ADMIN');
+  await conn.query('TRUNCATE TABLE DEPARTMENT');
   await conn.query('SET FOREIGN_KEY_CHECKS = 1');
 
   console.log('All data cleared (schema unchanged).');

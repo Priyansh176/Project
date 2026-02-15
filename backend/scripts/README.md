@@ -12,18 +12,32 @@
    cd backend
    npx tsx scripts/setup-db.ts
    ```
-   This creates the `course_allotment` database and all tables (students, admins, courses, preferences, allotments).
+   This creates the `course_allotment` database and the **normalized schema**:
+   - **DEPARTMENT** (Department_ID, Department_Name) — referenced by STUDENT and COURSE
+   - **ADMIN** (Admin_ID, Name, Email, Password)
+   - **STUDENT** (Roll_No PK, Name, Email, Password, Department_ID, Semester, CGPA, Status)
+   - **COURSE** (Course_ID PK, Course_Name, Credits, Department_ID, Semester, Status, Capacity, Slot, Faculty)
+   - **ADM_IN_ACCESS** (Admin–Course access)
+   - **PREFERENCE** (student course rankings)
+   - **ENROLLMENT** (allotment result: allotted/waitlisted, optional Grade)
 
-4. **(Optional) Create an admin user** so you can log in as admin:
-   - Generate a password hash (in Node):
-     ```bash
-     node -e "require('bcrypt').hash('YourPassword', 10).then(h=>console.log(h))"
-     ```
-   - In MySQL (or any client), run:
-     ```sql
-     USE course_allotment;
-     INSERT INTO admins (email, password_hash) VALUES ('admin@college.edu', '<paste-the-hash>');
-     ```
-   - Then log in with that email and the password you hashed.
+4. **Seed departments** (required before student signup):
+   ```bash
+   npx tsx scripts/seed-departments.ts
+   ```
 
-5. **Approve a student** (if you sign up as student): set `approved = 1` for that row in the `students` table, then you can log in.
+5. **Create an admin user** (optional, for login):
+   ```bash
+   npx tsx scripts/seed-admin.ts
+   ```
+   Default: `admin@nith.ac.in` / `admin123`
+
+6. **Approve a student**: set `Status = 'active'` for that student, or run:
+   ```bash
+   npx tsx scripts/approve-student.ts <student-email@nith.ac.in>
+   ```
+
+7. **Clear all data** (keeps schema):
+   ```bash
+   npx tsx scripts/clear-data.ts
+   ```

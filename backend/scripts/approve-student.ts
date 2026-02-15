@@ -16,7 +16,7 @@ async function main() {
     password: process.env.DB_PASSWORD ?? '',
     database: process.env.DB_NAME ?? 'course_allotment',
   });
-  const [r] = await conn.execute('UPDATE students SET approved = 1 WHERE email = ?', [email]);
+  const [r] = await conn.execute("UPDATE STUDENT SET Status = 'active' WHERE Email = ?", [email]);
   console.log('Approved:', (r as { affectedRows: number }).affectedRows, 'student(s)');
   await conn.end();
 }

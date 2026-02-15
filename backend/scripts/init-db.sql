@@ -1,73 +1,91 @@
--- College Course Allotment Portal - Initial Schema
--- Run this against your MySQL database (e.g. mysql -u root -p course_allotment < scripts/init-db.sql)
+-- College Course Allotment Portal - Normalized Schema (reference + app)
+-- Connections: DEPARTMENT -> STUDENT, DEPARTMENT -> COURSE; ADMIN <-> COURSE (ADM_IN_ACCESS); STUDENT <-> COURSE (PREFERENCE, ENROLLMENT)
 
 CREATE DATABASE IF NOT EXISTS course_allotment;
 USE course_allotment;
 
--- Students (from PRD)
-CREATE TABLE IF NOT EXISTS students (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  roll_no VARCHAR(50) NOT NULL UNIQUE,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  department VARCHAR(100) NOT NULL,
-  semester INT NOT NULL,
-  cgpa DECIMAL(4, 2) DEFAULT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  approved TINYINT(1) DEFAULT 0,
-  email_verified TINYINT(1) DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+-- Drop old schema tables if they exist (one-time migration to normalized schema)
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS allotments;
+DROP TABLE IF EXISTS preferences;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS students;
+DROP TABLE IF EXISTS admins;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- 1. DEPARTMENT (referenced by STUDENT and COURSE)
+CREATE TABLE IF NOT EXISTS DEPARTMENT (
+  Department_ID INT PRIMARY KEY AUTO_INCREMENT,
+  Department_Name VARCHAR(100) UNIQUE NOT NULL
 );
 
--- Admins
-CREATE TABLE IF NOT EXISTS admins (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- 2. ADMIN
+CREATE TABLE IF NOT EXISTS ADMIN (
+  Admin_ID INT PRIMARY KEY AUTO_INCREMENT,
+  Name VARCHAR(100) NOT NULL,
+  Email VARCHAR(100) UNIQUE NOT NULL,
+  Password VARCHAR(255) NOT NULL,
+  INDEX idx_admin_email (Email)
 );
 
--- Courses
-CREATE TABLE IF NOT EXISTS courses (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  code VARCHAR(50) NOT NULL UNIQUE,
-  name VARCHAR(255) NOT NULL,
-  faculty VARCHAR(255) NOT NULL,
-  credits INT NOT NULL,
-  capacity INT NOT NULL,
-  slot VARCHAR(50) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+-- 3. STUDENT (Department_ID -> DEPARTMENT; Roll_No used in PREFERENCE and ENROLLMENT)
+CREATE TABLE IF NOT EXISTS STUDENT (
+  Roll_No VARCHAR(100) PRIMARY KEY,
+  Name VARCHAR(100) NOT NULL,
+  Email VARCHAR(100) UNIQUE NOT NULL,
+  Password VARCHAR(255) NOT NULL,
+  Department_ID INT,
+  Semester INT NOT NULL,
+  CGPA DECIMAL(4, 2) DEFAULT NULL,
+  Status ENUM('active', 'inactive', 'graduated', 'suspended') NOT NULL DEFAULT 'inactive',
+  INDEX idx_student_email (Email),
+  INDEX idx_student_department (Department_ID),
+  FOREIGN KEY (Department_ID) REFERENCES DEPARTMENT(Department_ID) ON DELETE SET NULL
 );
 
--- Preferences (student ranked choices)
-CREATE TABLE IF NOT EXISTS preferences (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NOT NULL,
-  course_id INT NOT NULL,
-  `rank` INT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY unique_student_course (student_id, course_id),
-  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+-- 4. COURSE (Department_ID -> DEPARTMENT; Course_ID used in ADM_IN_ACCESS, PREFERENCE, ENROLLMENT)
+CREATE TABLE IF NOT EXISTS COURSE (
+  Course_ID VARCHAR(20) PRIMARY KEY,
+  Course_Name VARCHAR(100) NOT NULL,
+  Credits INT NOT NULL,
+  Department_ID INT,
+  Semester INT,
+  Status ENUM('active', 'inactive', 'archived') NOT NULL DEFAULT 'active',
+  Capacity INT NOT NULL DEFAULT 0,
+  Slot VARCHAR(50) NOT NULL DEFAULT 'TBA',
+  Faculty VARCHAR(255) NOT NULL DEFAULT 'TBA',
+  INDEX idx_course_department (Department_ID),
+  INDEX idx_course_semester (Semester),
+  FOREIGN KEY (Department_ID) REFERENCES DEPARTMENT(Department_ID) ON DELETE SET NULL
 );
 
--- Allotments (result of allotment run)
-CREATE TABLE IF NOT EXISTS allotments (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NOT NULL,
-  course_id INT NOT NULL,
-  status ENUM('allotted', 'waitlisted') NOT NULL DEFAULT 'allotted',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY unique_student_course_allotment (student_id, course_id),
-  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+-- 5. ADM_IN_ACCESS (Admin-Course access: which admin manages which course)
+CREATE TABLE IF NOT EXISTS ADM_IN_ACCESS (
+  ADMIN_Admin_ID INT,
+  COURSE_Course_ID VARCHAR(20),
+  PRIMARY KEY (ADMIN_Admin_ID, COURSE_Course_ID),
+  FOREIGN KEY (ADMIN_Admin_ID) REFERENCES ADMIN(Admin_ID) ON DELETE CASCADE,
+  FOREIGN KEY (COURSE_Course_ID) REFERENCES COURSE(Course_ID) ON DELETE CASCADE
 );
 
--- Indexes for common queries
-CREATE INDEX idx_students_roll_no ON students(roll_no);
-CREATE INDEX idx_students_email ON students(email);
-CREATE INDEX idx_preferences_student ON preferences(student_id);
-CREATE INDEX idx_allotments_student ON allotments(student_id);
-CREATE INDEX idx_allotments_course ON allotments(course_id);
+-- 6. PREFERENCE (student ranked course choices before allotment)
+CREATE TABLE IF NOT EXISTS PREFERENCE (
+  STUDENT_Roll_No VARCHAR(100),
+  COURSE_Course_ID VARCHAR(20),
+  `Rank` INT NOT NULL,
+  PRIMARY KEY (STUDENT_Roll_No, COURSE_Course_ID),
+  FOREIGN KEY (STUDENT_Roll_No) REFERENCES STUDENT(Roll_No) ON DELETE CASCADE,
+  FOREIGN KEY (COURSE_Course_ID) REFERENCES COURSE(Course_ID) ON DELETE CASCADE
+);
+
+-- 7. ENROLLMENT (allotment result: allotted / waitlisted; optional Grade)
+CREATE TABLE IF NOT EXISTS ENROLLMENT (
+  STUDENT_Roll_No VARCHAR(100),
+  COURSE_Course_ID VARCHAR(20),
+  Enrollment_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  Grade VARCHAR(2) DEFAULT NULL,
+  Status ENUM('allotted', 'waitlisted') NOT NULL DEFAULT 'allotted',
+  PRIMARY KEY (STUDENT_Roll_No, COURSE_Course_ID),
+  FOREIGN KEY (STUDENT_Roll_No) REFERENCES STUDENT(Roll_No) ON DELETE CASCADE,
+  FOREIGN KEY (COURSE_Course_ID) REFERENCES COURSE(Course_ID) ON DELETE CASCADE
+);
