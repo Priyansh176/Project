@@ -10,7 +10,7 @@ router.get('/', authMiddleware, requireStudent, async (_req, res) => {
         const rollNo = locals.user.sub;
         const prefs = await query('SELECT STUDENT_Roll_No, COURSE_Course_ID, `Rank` FROM PREFERENCE WHERE STUDENT_Roll_No = ? ORDER BY `Rank`', [rollNo]);
         const result = await Promise.all(prefs.map(async (p) => {
-            const courses = await query('SELECT Course_ID, Course_Name, Credits, Faculty, Slot FROM COURSE WHERE Course_ID = ?', [p.COURSE_Course_ID]);
+            const courses = await query('SELECT Course_ID, Course_Name, Credits, Faculty, Slot, Course_Type, Elective_Slot, Max_Choices FROM COURSE WHERE Course_ID = ?', [p.COURSE_Course_ID]);
             const c = courses[0];
             return {
                 course_id: p.COURSE_Course_ID,
@@ -19,6 +19,9 @@ router.get('/', authMiddleware, requireStudent, async (_req, res) => {
                 credits: c?.Credits ?? null,
                 faculty: c?.Faculty ?? null,
                 slot: c?.Slot ?? null,
+                course_type: c?.Course_Type ?? null,
+                elective_slot: c?.Elective_Slot ?? null,
+                max_choices: c?.Max_Choices ?? null,
             };
         }));
         res.json({

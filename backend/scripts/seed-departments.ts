@@ -10,7 +10,7 @@ import { createConnection } from 'mysql2/promise';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const DEPARTMENTS = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'Other'];
+const DEPARTMENTS = ['CSE', 'ECE', 'EE', 'CIVIL', 'MECH', 'MNC', 'Others'];
 
 async function main() {
   const conn = await createConnection({

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, XCircle, Clock, Edit2, Upload, X } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Edit2, Upload, X, Trash2 } from 'lucide-react';
 
 interface Student {
   roll_no: string;
@@ -79,6 +79,31 @@ export function AdminStudents() {
       loadStudents();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to reject student');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const deleteStudent = async (rollNo: string, name: string) => {
+    if (!accessToken) return;
+    
+    const confirmed = window.confirm(
+      `Delete student ${rollNo} (${name})? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+    
+    setActionLoading(rollNo);
+    setError('');
+    setSuccessMessage('');
+    try {
+      await api(`/admin/${rollNo}`, {
+        method: 'DELETE',
+        token: accessToken,
+      });
+      setSuccessMessage(`Student ${rollNo} deleted`);
+      loadStudents();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete student');
     } finally {
       setActionLoading(null);
     }
@@ -314,6 +339,15 @@ export function AdminStudents() {
                           <XCircle size={14} className="mr-1" />
                           Reject
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={actionLoading === student.roll_no}
+                          onClick={() => deleteStudent(student.roll_no, student.name)}
+                        >
+                          <Trash2 size={14} className="mr-1" />
+                          Delete
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -395,14 +429,25 @@ export function AdminStudents() {
                       </td>
                       <td className="py-3 px-3 text-right">
                         {editingCGPA !== student.roll_no && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => startEditCGPA(student.roll_no, student.cgpa)}
-                          >
-                            <Edit2 size={14} className="mr-1" />
-                            Edit CGPA
-                          </Button>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEditCGPA(student.roll_no, student.cgpa)}
+                            >
+                              <Edit2 size={14} className="mr-1" />
+                              Edit CGPA
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => deleteStudent(student.roll_no, student.name)}
+                              disabled={actionLoading === student.roll_no}
+                            >
+                              <Trash2 size={14} className="mr-1" />
+                              Delete
+                            </Button>
+                          </div>
                         )}
                       </td>
                     </tr>

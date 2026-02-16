@@ -54,8 +54,13 @@ CREATE TABLE IF NOT EXISTS COURSE (
   Capacity INT NOT NULL DEFAULT 0,
   Slot VARCHAR(50) NOT NULL DEFAULT 'TBA',
   Faculty VARCHAR(255) NOT NULL DEFAULT 'TBA',
+  Course_Type ENUM('core', 'elective') NOT NULL DEFAULT 'core',
+  Elective_Slot VARCHAR(50) DEFAULT NULL,
+  Max_Choices INT DEFAULT NULL,
   INDEX idx_course_department (Department_ID),
   INDEX idx_course_semester (Semester),
+  INDEX idx_course_elective (Elective_Slot),
+  INDEX idx_course_sem_dept (Semester, Department_ID),
   FOREIGN KEY (Department_ID) REFERENCES DEPARTMENT(Department_ID) ON DELETE SET NULL
 );
 

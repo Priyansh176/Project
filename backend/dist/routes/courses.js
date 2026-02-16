@@ -21,15 +21,44 @@ function mapCourse(row, seatsAllotted, departmentName) {
         seats_allotted: seatsAllotted,
         slot: row.Slot,
         faculty: row.Faculty,
+        course_type: row.Course_Type,
+        elective_slot: row.Elective_Slot,
+        max_choices: row.Max_Choices,
     };
 }
-// GET /courses – list courses (optional: department, semester); public or auth
+// GET /courses – list courses (filters by student's semester/dept if authenticated)
 router.get('/', async (req, res) => {
     try {
         const dept = req.query.department;
         const sem = req.query.semester;
-        let sql = 'SELECT Course_ID, Course_Name, Credits, Department_ID, Semester, Status, Capacity, Slot, Faculty FROM COURSE WHERE Status = ?';
+        let sql = 'SELECT Course_ID, Course_Name, Credits, Department_ID, Semester, Status, Capacity, Slot, Faculty, Course_Type, Elective_Slot, Max_Choices FROM COURSE WHERE Status = ?';
         const params = ['active'];
+        // If authenticated, filter by student's semester and department
+        const authHeader = req.headers.authorization;
+        if (authHeader?.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            try {
+                const jwt = await import('jsonwebtoken');
+                const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET ?? '');
+                if (decoded.rollNo) {
+                    const student = await query('SELECT Semester, Department_ID FROM STUDENT WHERE Roll_No = ?', [decoded.rollNo]);
+                    if (student[0]) {
+                        if (student[0].Semester != null) {
+                            sql += ' AND Semester = ?';
+                            params.push(student[0].Semester);
+                        }
+                        if (student[0].Department_ID != null) {
+                            sql += ' AND Department_ID = ?';
+                            params.push(student[0].Department_ID);
+                        }
+                    }
+                }
+            }
+            catch {
+                // Invalid token, proceed without filtering
+            }
+        }
+        // Admin can still use manual filters
         if (dept) {
             sql += ' AND Department_ID = (SELECT Department_ID FROM DEPARTMENT WHERE Department_Name = ?)';
             params.push(dept);
@@ -38,7 +67,7 @@ router.get('/', async (req, res) => {
             sql += ' AND Semester = ?';
             params.push(Number(sem));
         }
-        sql += ' ORDER BY Course_ID';
+        sql += ' ORDER BY Elective_Slot, Course_ID';
         const rows = await query(sql, params);
         const result = await Promise.all(rows.map(async (r) => {
             const allotted = await getSeatsAllotted(r.Course_ID);
@@ -61,7 +90,7 @@ router.get('/', async (req, res) => {
 router.get('/:courseId', async (req, res) => {
     try {
         const { courseId } = req.params;
-        const rows = await query('SELECT Course_ID, Course_Name, Credits, Department_ID, Semester, Status, Capacity, Slot, Faculty FROM COURSE WHERE Course_ID = ?', [courseId]);
+        const rows = await query('SELECT Course_ID, Course_Name, Credits, Department_ID, Semester, Status, Capacity, Slot, Faculty, Course_Type, Elective_Slot, Max_Choices FROM COURSE WHERE Course_ID = ?', [courseId]);
         if (rows.length === 0) {
             res.status(404).json({ error: 'Course not found' });
             return;
@@ -84,7 +113,7 @@ router.get('/:courseId', async (req, res) => {
 // POST /courses – add course (admin only)
 router.post('/', authMiddleware, requireAdmin, async (req, res) => {
     try {
-        const { course_id, course_name, credits, department_id, semester, capacity, slot, faculty } = req.body;
+        const { course_id, course_name, credits, department_id, semester, capacity, slot, faculty, course_type, elective_slot, max_choices } = req.body;
         if (!course_id || !course_name || typeof credits !== 'number' || capacity == null) {
             res.status(400).json({ error: 'Required: course_id, course_name, credits, capacity' });
             return;
@@ -95,8 +124,11 @@ router.post('/', authMiddleware, requireAdmin, async (req, res) => {
             res.status(409).json({ error: 'Course ID already exists' });
             return;
         }
-        await query(`INSERT INTO COURSE (Course_ID, Course_Name, Credits, Department_ID, Semester, Status, Capacity, Slot, Faculty)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)`, [
+        const courseType = course_type === 'elective' ? 'elective' : 'core';
+        const electiveSlot = courseType === 'elective' && elective_slot ? String(elective_slot) : null;
+        const maxChoices = courseType === 'elective' && max_choices != null ? Number(max_choices) : null;
+        await query(`INSERT INTO COURSE (Course_ID, Course_Name, Credits, Department_ID, Semester, Status, Capacity, Slot, Faculty, Course_Type, Elective_Slot, Max_Choices)
+       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)`, [
             id,
             String(course_name),
             Number(credits),
@@ -105,6 +137,9 @@ router.post('/', authMiddleware, requireAdmin, async (req, res) => {
             Number(capacity),
             slot != null ? String(slot) : 'TBA',
             faculty != null ? String(faculty) : 'TBA',
+            courseType,
+            electiveSlot,
+            maxChoices,
         ]);
         res.status(201).json({ message: 'Course created', course_id: id });
     }
@@ -117,7 +152,7 @@ router.post('/', authMiddleware, requireAdmin, async (req, res) => {
 router.patch('/:courseId', authMiddleware, requireAdmin, async (req, res) => {
     try {
         const { courseId } = req.params;
-        const { course_name, credits, department_id, semester, capacity, slot, faculty, status } = req.body;
+        const { course_name, credits, department_id, semester, capacity, slot, faculty, status, course_type, elective_slot, max_choices } = req.body;
         const rows = await query('SELECT Course_ID FROM COURSE WHERE Course_ID = ?', [courseId]);
         if (rows.length === 0) {
             res.status(404).json({ error: 'Course not found' });
@@ -156,6 +191,18 @@ router.patch('/:courseId', authMiddleware, requireAdmin, async (req, res) => {
         if (status !== undefined && ['active', 'inactive', 'archived'].includes(String(status))) {
             updates.push('Status = ?');
             params.push(status);
+        }
+        if (course_type !== undefined && ['core', 'elective'].includes(String(course_type))) {
+            updates.push('Course_Type = ?');
+            params.push(course_type);
+        }
+        if (elective_slot !== undefined) {
+            updates.push('Elective_Slot = ?');
+            params.push(elective_slot || null);
+        }
+        if (max_choices !== undefined) {
+            updates.push('Max_Choices = ?');
+            params.push(max_choices != null ? Number(max_choices) : null);
         }
         if (updates.length === 0) {
             res.status(400).json({ error: 'No fields to update' });

@@ -6,7 +6,7 @@ import { PREFERENCE_DEADLINE, canSubmitPreferences } from '../config/constants.j
 const router = Router();
 
 type PrefRow = { STUDENT_Roll_No: string; COURSE_Course_ID: string; Rank: number };
-type CourseRow = { Course_ID: string; Course_Name: string; Credits: number; Faculty: string; Slot: string };
+type CourseRow = { Course_ID: string; Course_Name: string; Credits: number; Faculty: string; Slot: string; Course_Type?: string; Elective_Slot?: string | null; Max_Choices?: number | null };
 
 // GET /preferences – current student's preferences with course details and deadline info
 router.get('/', authMiddleware, requireStudent, async (_req: Request, res: Response): Promise<void> => {
@@ -20,7 +20,7 @@ router.get('/', authMiddleware, requireStudent, async (_req: Request, res: Respo
     const result = await Promise.all(
       prefs.map(async (p) => {
         const courses = await query<CourseRow[]>(
-          'SELECT Course_ID, Course_Name, Credits, Faculty, Slot FROM COURSE WHERE Course_ID = ?',
+          'SELECT Course_ID, Course_Name, Credits, Faculty, Slot, Course_Type, Elective_Slot, Max_Choices FROM COURSE WHERE Course_ID = ?',
           [p.COURSE_Course_ID]
         );
         const c = courses[0];
@@ -31,6 +31,9 @@ router.get('/', authMiddleware, requireStudent, async (_req: Request, res: Respo
           credits: c?.Credits ?? null,
           faculty: c?.Faculty ?? null,
           slot: c?.Slot ?? null,
+          course_type: c?.Course_Type ?? null,
+          elective_slot: c?.Elective_Slot ?? null,
+          max_choices: c?.Max_Choices ?? null,
         };
       })
     );

@@ -16,6 +16,11 @@ interface Course {
   capacity: number;
   seats_available: number;
   seats_allotted: number;
+  course_type?: string;
+  elective_slot?: string | null;
+  max_choices?: number | null;
+  semester?: number | null;
+  department_id?: number | null;
 }
 
 interface CourseForm {
@@ -25,6 +30,11 @@ interface CourseForm {
   faculty: string;
   slot: string;
   capacity: number;
+  course_type: 'core' | 'elective';
+  elective_slot: string;
+  max_choices: number;
+  semester: number | null;
+  department_id: number | null;
 }
 
 const EMPTY_FORM: CourseForm = {
@@ -34,6 +44,11 @@ const EMPTY_FORM: CourseForm = {
   faculty: 'TBA',
   slot: 'TBA',
   capacity: 30,
+  course_type: 'core',
+  elective_slot: '',
+  max_choices: 1,
+  semester: null,
+  department_id: null,
 };
 
 export function AdminCourses() {
@@ -72,6 +87,11 @@ export function AdminCourses() {
         faculty: course.faculty,
         slot: course.slot,
         capacity: course.capacity,
+        course_type: (course.course_type as 'core' | 'elective') || 'core',
+        elective_slot: course.elective_slot || '',
+        max_choices: course.max_choices || 1,
+        semester: course.semester || null,
+        department_id: course.department_id || null,
       });
     } else {
       setEditingId(null);
@@ -101,21 +121,36 @@ export function AdminCourses() {
       setError('Credits must be ≥ 1, Capacity must be ≥ 0');
       return;
     }
+    if (formData.course_type === 'elective' && !formData.elective_slot.trim()) {
+      setError('Elective slot name is required for elective courses');
+      return;
+    }
+    if (formData.course_type === 'elective' && formData.max_choices < 1) {
+      setError('Max choices must be at least 1 for elective courses');
+      return;
+    }
 
     setFormLoading(true);
     setError('');
     try {
+      const payload = {
+        course_name: formData.course_name,
+        credits: formData.credits,
+        faculty: formData.faculty,
+        slot: formData.slot,
+        capacity: formData.capacity,
+        course_type: formData.course_type,
+        elective_slot: formData.course_type === 'elective' ? formData.elective_slot : null,
+        max_choices: formData.course_type === 'elective' ? formData.max_choices : null,
+        semester: formData.semester,
+        department_id: formData.department_id,
+      };
+      
       if (editingId) {
         // Update course
         await api(`/courses/${editingId}`, {
           method: 'PATCH',
-          body: JSON.stringify({
-            course_name: formData.course_name,
-            credits: formData.credits,
-            faculty: formData.faculty,
-            slot: formData.slot,
-            capacity: formData.capacity,
-          }),
+          body: JSON.stringify(payload),
           token: accessToken,
         });
         setSuccess(`Course ${editingId} updated successfully`);
@@ -123,7 +158,7 @@ export function AdminCourses() {
         // Create course
         await api('/courses', {
           method: 'POST',
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ ...payload, course_id: formData.course_id }),
           token: accessToken,
         });
         setSuccess(`Course ${formData.course_id} created successfully`);
@@ -226,6 +261,22 @@ export function AdminCourses() {
                   />
                 </div>
 
+                {/* Course Type */}
+                <div className="space-y-2">
+                  <Label htmlFor="course_type">Course Type *</Label>
+                  <select
+                    id="course_type"
+                    value={formData.course_type}
+                    onChange={(e) =>
+                      setFormData({ ...formData, course_type: e.target.value as 'core' | 'elective' })
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="core">Core (Mandatory)</option>
+                    <option value="elective">Elective (Optional)</option>
+                  </select>
+                </div>
+
                 {/* Credits */}
                 <div className="space-y-2">
                   <Label htmlFor="credits">Credits *</Label>
@@ -238,6 +289,39 @@ export function AdminCourses() {
                       setFormData({ ...formData, credits: parseInt(e.target.value) || 0 })
                     }
                   />
+                </div>
+
+                {/* Semester */}
+                <div className="space-y-2">
+                  <Label htmlFor="semester">Semester *</Label>
+                  <select
+                    id="semester"
+                    value={formData.semester || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, semester: e.target.value ? parseInt(e.target.value) : null })
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select Semester</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                      <option key={sem} value={sem}>Semester {sem}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Department */}
+                <div className="space-y-2">
+                  <Label htmlFor="department_id">Department ID</Label>
+                  <Input
+                    id="department_id"
+                    type="number"
+                    placeholder="Department ID (optional)"
+                    value={formData.department_id || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, department_id: e.target.value ? parseInt(e.target.value) : null })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">Leave empty for all departments</p>
                 </div>
 
                 {/* Capacity */}
@@ -280,6 +364,47 @@ export function AdminCourses() {
                   />
                 </div>
               </div>
+
+              {/* Elective-specific fields */}
+              {formData.course_type === 'elective' && (
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="font-semibold text-sm mb-3">Elective Configuration</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Elective Slot */}
+                    <div className="space-y-2">
+                      <Label htmlFor="elective_slot">Elective Slot Name *</Label>
+                      <Input
+                        id="elective_slot"
+                        placeholder="e.g., Elective-1, Elective-2"
+                        value={formData.elective_slot}
+                        onChange={(e) =>
+                          setFormData({ ...formData, elective_slot: e.target.value })
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Group courses by slot (e.g., all "Elective-1" courses are one group)
+                      </p>
+                    </div>
+
+                    {/* Max Choices */}
+                    <div className="space-y-2">
+                      <Label htmlFor="max_choices">Max Student Choices *</Label>
+                      <Input
+                        id="max_choices"
+                        type="number"
+                        min="1"
+                        value={formData.max_choices}
+                        onChange={(e) =>
+                          setFormData({ ...formData, max_choices: parseInt(e.target.value) || 1 })
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        How many courses can a student select from this elective slot
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-2 pt-4">
                 <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={formLoading}>

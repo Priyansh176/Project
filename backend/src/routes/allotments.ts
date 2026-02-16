@@ -13,6 +13,9 @@ interface EnrollmentRow {
   Faculty: string;
   Slot: string;
   Capacity: number;
+  Course_Type?: string;
+  Elective_Slot?: string | null;
+  Max_Choices?: number | null;
 }
 
 interface PrefRow {
@@ -36,7 +39,10 @@ router.get('/me', authMiddleware, requireStudent, async (_req: Request, res: Res
         c.Credits,
         c.Faculty,
         c.Slot,
-        c.Capacity
+        c.Capacity,
+        c.Course_Type,
+        c.Elective_Slot,
+        c.Max_Choices
       FROM ENROLLMENT e
       JOIN COURSE c ON e.COURSE_Course_ID = c.Course_ID
       WHERE e.STUDENT_Roll_No = ?
@@ -63,6 +69,9 @@ router.get('/me', authMiddleware, requireStudent, async (_req: Request, res: Res
         slot: e.Slot,
         preference_rank: prefRankMap.get(e.COURSE_Course_ID) ?? null,
         capacity: e.Capacity,
+        course_type: e.Course_Type ?? 'core',
+        elective_slot: e.Elective_Slot ?? null,
+        max_choices: e.Max_Choices ?? null,
       }));
 
     const waitlisted = enrollments
@@ -75,6 +84,9 @@ router.get('/me', authMiddleware, requireStudent, async (_req: Request, res: Res
         slot: e.Slot,
         preference_rank: prefRankMap.get(e.COURSE_Course_ID) ?? null,
         capacity: e.Capacity,
+        course_type: e.Course_Type ?? 'core',
+        elective_slot: e.Elective_Slot ?? null,
+        max_choices: e.Max_Choices ?? null,
       }));
 
     res.json({

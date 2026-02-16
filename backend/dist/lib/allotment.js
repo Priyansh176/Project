@@ -1,6 +1,6 @@
 import { query } from '../config/db.js';
 /**
- * Load all preferences with student CGPA details
+ * Load all preferences with student CGPA details and course type/slot info
  */
 async function loadPreferencesWithCGPA() {
     const sql = `
@@ -8,9 +8,12 @@ async function loadPreferencesWithCGPA() {
       p.STUDENT_Roll_No as roll_no,
       s.CGPA as cgpa,
       p.COURSE_Course_ID as course_id,
-      p.\`Rank\` as rank
+      p.\`Rank\` as \`rank\`,
+      c.Course_Type as course_type,
+      c.Elective_Slot as elective_slot
     FROM PREFERENCE p
     JOIN STUDENT s ON p.STUDENT_Roll_No = s.Roll_No
+    JOIN COURSE c ON p.COURSE_Course_ID = c.Course_ID
     WHERE s.Status = 'active'
     ORDER BY s.CGPA DESC, p.\`Rank\` ASC
   `;
@@ -65,6 +68,7 @@ async function insertEnrollment(rollNo, courseId, status) {
  * Main allotment algorithm
  * - Sort students by CGPA (descending)
  * - For each student: try to allot courses in preference rank order
+ * - For elective courses: ensure only 1 course per elective slot per student
  * - If course has capacity, allot; else waitlist
  * - Returns summary statistics
  */
@@ -91,10 +95,21 @@ export async function runAllotment() {
     let allottedCount = 0;
     let waitlistedCount = 0;
     for (const [rollNo, studentPrefs] of prefsByStudent.entries()) {
+        // Track which elective slots this student has been allotted from
+        const allottedSlots = new Set();
         // Track which student got what status
         const studentEnrollments = [];
         for (const pref of studentPrefs) {
             const courseId = pref.course_id;
+            const courseType = pref.course_type ?? 'core';
+            const electiveSlot = pref.elective_slot ?? null;
+            // For elective courses: check if student already has an allotment from this slot
+            if (courseType === 'elective' && electiveSlot) {
+                if (allottedSlots.has(electiveSlot)) {
+                    // Student already allotted from this slot, skip this preference
+                    continue;
+                }
+            }
             const capacity = capacities.get(courseId) ?? 0;
             const currentEnrollment = enrollments.get(courseId) ?? 0;
             if (currentEnrollment < capacity) {
@@ -102,11 +117,19 @@ export async function runAllotment() {
                 studentEnrollments.push({ courseId, status: 'allotted' });
                 enrollments.set(courseId, currentEnrollment + 1);
                 allottedCount++;
+                // If elective, mark this slot as used
+                if (courseType === 'elective' && electiveSlot) {
+                    allottedSlots.add(electiveSlot);
+                }
             }
             else {
                 // No seat: waitlist
                 studentEnrollments.push({ courseId, status: 'waitlisted' });
                 waitlistedCount++;
+                // If elective, mark this slot as used (even if waitlisted, don't consider other courses from same slot)
+                if (courseType === 'elective' && electiveSlot) {
+                    allottedSlots.add(electiveSlot);
+                }
             }
         }
         // Batch insert enrollments for this student

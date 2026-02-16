@@ -3,7 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2, Zap } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Zap, Trash2 } from 'lucide-react';
 
 interface AllotmentResult {
   students_processed: number;
@@ -60,6 +60,33 @@ export function AdminAllotment() {
     setSuccess('Results published! Students can now view their allotments.');
   };
 
+  const clearAllotment = async () => {
+    if (!accessToken) return;
+
+    // Confirm before clearing
+    const confirmed = window.confirm(
+      'This will delete all existing allotments. Continue?'
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await api('/admin/allotment/clear', {
+        method: 'POST',
+        token: accessToken,
+      });
+      setResult(null);
+      setPublished(false);
+      setSuccess('All allotments cleared successfully!');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to clear allotments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -79,6 +106,7 @@ export function AdminAllotment() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-blue-800 text-sm space-y-2">
+          <p>• All active students must have CGPA assigned before running allotment</p>
           <p>• The allotment algorithm sorts students by CGPA (highest first)</p>
           <p>• Students are allotted courses based on their ranked preferences</p>
           <p>• Courses fill up to capacity; overflow students are waitlisted</p>
@@ -104,16 +132,27 @@ export function AdminAllotment() {
               {loading ? 'Running...' : 'Run Allotment'}
             </Button>
             {result && (
-              <Button
-                size="lg"
-                variant={published ? 'default' : 'outline'}
-                disabled={published}
-                onClick={publishResults}
-                className={published ? 'bg-green-600' : ''}
-              >
-                <CheckCircle2 size={18} className="mr-2" />
-                {published ? 'Published' : 'Publish Results'}
-              </Button>
+              <>
+                <Button
+                  size="lg"
+                  variant={published ? 'default' : 'outline'}
+                  disabled={published}
+                  onClick={publishResults}
+                  className={published ? 'bg-green-600' : ''}
+                >
+                  <CheckCircle2 size={18} className="mr-2" />
+                  {published ? 'Published' : 'Publish Results'}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="destructive"
+                  disabled={loading}
+                  onClick={clearAllotment}
+                >
+                  <Trash2 size={18} className="mr-2" />
+                  Clear Allotments
+                </Button>
+              </>
             )}
           </div>
         </CardContent>

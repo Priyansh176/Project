@@ -11,6 +11,9 @@ type PrefItem = {
   credits: number | null;
   faculty: string | null;
   slot: string | null;
+  course_type?: string | null;
+  elective_slot?: string | null;
+  max_choices?: number | null;
 };
 
 type PreferencesResponse = {
@@ -162,44 +165,82 @@ export function MyPreferences() {
           {prefs.length === 0 ? (
             <p className="text-muted-foreground text-sm">No preferences yet. Add courses from Available Courses.</p>
           ) : (
-            <ul className="space-y-2">
-              {prefs.map((p, i) => (
-                <li key={p.course_id} className="flex items-center justify-between rounded-md border p-3">
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium text-muted-foreground w-6">{p.rank}.</span>
-                    <span className="font-medium">{p.course_id}</span>
-                    <span>{p.course_name ?? ''}</span>
-                    {p.credits != null && <span className="text-muted-foreground text-sm">{p.credits} cr</span>}
+            <div className="space-y-6">
+              {(() => {
+                // Group preferences by elective slot
+                const electiveSlots = new Map<string, PrefItem[]>();
+                const corePrefs: PrefItem[] = [];
+
+                prefs.forEach((p) => {
+                  if (p.course_type === 'elective' && p.elective_slot) {
+                    if (!electiveSlots.has(p.elective_slot)) {
+                      electiveSlots.set(p.elective_slot, []);
+                    }
+                    electiveSlots.get(p.elective_slot)!.push(p);
+                  } else {
+                    corePrefs.push(p);
+                  }
+                });
+
+                const groups: { slot: string | null; items: PrefItem[] }[] = [];
+                if (corePrefs.length > 0) {
+                  groups.push({ slot: null, items: corePrefs });
+                }
+                electiveSlots.forEach((items, slot) => {
+                  groups.push({ slot, items });
+                });
+
+                return groups.map(({ slot, items }) => (
+                  <div key={slot ?? 'core'} className="border rounded-lg p-4">
+                    <h3 className="font-semibold mb-3">
+                      {slot ? `${slot}` : 'Core Courses'}
+                    </h3>
+                    <ul className="space-y-2">
+                      {items.map((p, i) => (
+                        <li key={p.course_id} className="flex items-center justify-between rounded-md bg-muted/30 p-3">
+                          <div className="flex items-center gap-3">
+                            <span className="font-medium text-muted-foreground w-6">{p.rank}.</span>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{p.course_id}</span>
+                                <span>{p.course_name ?? ''}</span>
+                                {p.credits != null && <span className="text-muted-foreground text-sm">{p.credits} cr</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={saving || !canEdit || i === 0}
+                              onClick={() => move(p.course_id, 'up')}
+                            >
+                              ↑
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={saving || !canEdit || i === items.length - 1}
+                              onClick={() => move(p.course_id, 'down')}
+                            >
+                              ↓
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={saving || !canEdit}
+                              onClick={() => remove(p.course_id)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={saving || !canEdit || i === 0}
-                      onClick={() => move(p.course_id, 'up')}
-                    >
-                      ↑
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={saving || !canEdit || i === prefs.length - 1}
-                      onClick={() => move(p.course_id, 'down')}
-                    >
-                      ↓
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={saving || !canEdit}
-                      onClick={() => remove(p.course_id)}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                ));
+              })()}
+            </div>
           )}
         </CardContent>
       </Card>

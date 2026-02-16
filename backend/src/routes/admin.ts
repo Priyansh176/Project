@@ -82,6 +82,28 @@ router.patch('/:rollNo/reject', authMiddleware, requireAdmin, async (req: Reques
   }
 });
 
+// DELETE /admin/students/:rollNo – delete a student completely
+router.delete('/:rollNo', authMiddleware, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { rollNo } = req.params;
+
+    // Check student exists
+    const students = await query<{ Roll_No: string }[]>('SELECT Roll_No FROM STUDENT WHERE Roll_No = ?', [rollNo]);
+    if (students.length === 0) {
+      res.status(404).json({ error: 'Student not found' });
+      return;
+    }
+
+    // Delete student (cascade deletes preferences and enrollments via foreign keys)
+    await query('DELETE FROM STUDENT WHERE Roll_No = ?', [rollNo]);
+
+    res.json({ message: 'Student deleted successfully', roll_no: rollNo });
+  } catch (err) {
+    console.error('Delete student error:', err);
+    res.status(500).json({ error: 'Failed to delete student' });
+  }
+});
+
 // PATCH /admin/students/:rollNo/cgpa – update student CGPA
 router.patch('/:rollNo/cgpa', authMiddleware, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -214,6 +236,22 @@ router.get('/allotment/stats', authMiddleware, requireAdmin, async (_req: Reques
 router.post('/allotment/run', authMiddleware, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
   try {
     console.log('Starting allotment process...');
+    
+    // Check if all active students have CGPA assigned
+    const studentsMissingCGPA = await query<{ Roll_No: string; Name: string }[]>(`
+      SELECT Roll_No, Name FROM STUDENT 
+      WHERE Status = 'active' AND (CGPA IS NULL OR CGPA = 0)
+    `);
+    
+    if (studentsMissingCGPA.length > 0) {
+      res.status(400).json({ 
+        error: 'Cannot run allotment: Not all students have CGPA assigned',
+        students_missing_cgpa: studentsMissingCGPA.length,
+        details: `${studentsMissingCGPA.length} student(s) without CGPA: ${studentsMissingCGPA.map(s => `${s.Roll_No} (${s.Name})`).join(', ')}`
+      });
+      return;
+    }
+    
     const result = await runAllotment();
     console.log('Allotment completed:', result);
     res.json({
@@ -228,6 +266,25 @@ router.post('/allotment/run', authMiddleware, requireAdmin, async (_req: Request
   } catch (err) {
     console.error('Allotment run error:', err);
     const errorMessage = err instanceof Error ? err.message : 'Failed to run allotment';
+    res.status(500).json({ error: errorMessage, details: err instanceof Error ? err.stack : undefined });
+  }
+});
+
+// POST /admin/allotment/clear – clear all previous allotments
+router.post('/allotment/clear', authMiddleware, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('Clearing all allotments...');
+    
+    // Delete all enrollments
+    await query('DELETE FROM ENROLLMENT');
+    
+    console.log('Allotments cleared');
+    res.json({
+      message: 'All allotments cleared successfully',
+    });
+  } catch (err) {
+    console.error('Clear allotment error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Failed to clear allotments';
     res.status(500).json({ error: errorMessage, details: err instanceof Error ? err.stack : undefined });
   }
 });
