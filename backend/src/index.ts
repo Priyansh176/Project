@@ -4,6 +4,8 @@ import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import coursesRoutes from './routes/courses.js';
 import preferencesRoutes from './routes/preferences.js';
+import allotmentsRoutes from './routes/allotments.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 5000;
@@ -18,6 +20,8 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRoutes);
 app.use('/courses', coursesRoutes);
 app.use('/preferences', preferencesRoutes);
+app.use('/allotments', allotmentsRoutes);
+app.use('/admin', adminRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

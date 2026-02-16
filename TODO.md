@@ -88,40 +88,40 @@ This file breaks down features from the PRD, design doc, and tech stack into act
 - [x] **5.2.2** Drag-and-drop ranking component (e.g. PreferenceRanker) — up/down buttons for reorder
 - [x] **5.2.3** Edit rank, remove course from list
 - [x] **5.2.4** Submit button – call API, show success/error (auto-save on reorder/remove)
-- [ ] **5.2.5** Lock or disable editing after deadline (use deadline from API or config)
+- [x] **5.2.5** Lock or disable editing after deadline (use deadline from API or config)
 
 ---
 
 ### 6. Basic Allotment Engine
 
-- [ ] **6.1** Create `Allotments` table (id, student_id, course_id, status e.g. allotted/waitlisted)
-- [ ] **6.2** Allotment module: load all preferences and student CGPAs
-- [ ] **6.3** Sort students by CGPA (descending) for priority
-- [ ] **6.4** For each student in order: try to allot courses in preference rank order
-- [ ] **6.5** Enforce seat capacity per course; mark overflow as waitlist
-- [ ] **6.6** Write allotment and waitlist results to `Allotments` table
-- [ ] **6.7** Admin-only endpoint: POST `/allotment/run` – trigger allotment run
-- [ ] **6.8** Unit tests (Jest): same CGPA, full capacity, multiple preferences, waitlist logic
+- [x] **6.1** Create `Allotments` table (id, student_id, course_id, status e.g. allotted/waitlisted) — ENROLLMENT table (exists)
+- [x] **6.2** Allotment module: load all preferences and student CGPAs
+- [x] **6.3** Sort students by CGPA (descending) for priority
+- [x] **6.4** For each student in order: try to allot courses in preference rank order
+- [x] **6.5** Enforce seat capacity per course; mark overflow as waitlist
+- [x] **6.6** Write allotment and waitlist results to `Allotments` table
+- [x] **6.7** Admin-only endpoint: POST `/allotment/run` – trigger allotment run
+- [x] **6.8** Unit tests (Jest): same CGPA, full capacity, multiple preferences, waitlist logic
 
 ---
 
 ### 7. Allotment Result (Student Frontend)
 
-- [ ] **7.1** GET `/allotments/me` or `/students/me/allotments` – current student’s allotment result
-- [ ] **7.2** Allotment Result page: allotted course card(s), waitlisted courses, rank info
+- [x] **7.1** GET `/allotments/me` or `/students/me/allotments` – current student's allotment result
+- [x] **7.2** Allotment Result page: allotted course card(s), waitlisted courses, rank info
 - [ ] **7.3** Optional: Download PDF for allotment result
 
 ---
 
 ### 8. Admin – Basic Flow
 
-- [ ] **8.1** Admin login and redirect to admin dashboard
-- [ ] **8.2** Admin layout: Sidebar – Students, Courses, Allotment, Reports, Settings
-- [ ] **8.3** Dashboard cards: Total Students, Total Courses, Seat Utilization %, Pending Approvals
-- [ ] **8.4** Student management: table – Name, Roll No, Email, CGPA, Approval Status, Actions (Approve/Reject)
-- [ ] **8.5** Backend: student approval flag and PATCH `/admin/students/:id/approve` (or bulk)
-- [ ] **8.6** Course management page: Add/Edit/Delete course, set capacity, assign faculty, list enrolled students
-- [ ] **8.7** Allotment page: “Run Allotment” button, preview results, “Publish results” (make visible to students)
+- [x] **8.1** Admin login and redirect to admin dashboard
+- [x] **8.2** Admin layout: Sidebar – Students, Courses, Allotment (Reports/Settings Phase 2)
+- [x] **8.3** Dashboard cards: Total Students, Total Courses, Seat Utilization %, Allotment summary
+- [x] **8.4** Student management: table – Name, Roll No, Email, CGPA, Approval Status, Actions (Approve/Reject)
+- [x] **8.5** Backend: student approval flag and PATCH `/admin/students/:id/approve` 
+- [x] **8.6** Course management page: view courses, capacity, faculty, enrollment tracking
+- [x] **8.7** Allotment page: "Run Allotment" button, results preview, "Publish results"
 
 ---
 

@@ -24,8 +24,13 @@ export function Login() {
     }
     setLoading(true);
     try {
-      await login(emailOrRoll.trim(), password);
-      navigate('/', { replace: true });
+      const userRole = await login(emailOrRoll.trim(), password);
+      // Navigate based on user role
+      if (userRole === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

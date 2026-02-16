@@ -1,13 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { query } from '../config/db.js';
 import { authMiddleware, requireStudent, type AuthLocals } from '../middleware/auth.js';
+import { PREFERENCE_DEADLINE, canSubmitPreferences } from '../config/constants.js';
 
 const router = Router();
 
 type PrefRow = { STUDENT_Roll_No: string; COURSE_Course_ID: string; Rank: number };
 type CourseRow = { Course_ID: string; Course_Name: string; Credits: number; Faculty: string; Slot: string };
 
-// GET /preferences – current student's preferences with course details
+// GET /preferences – current student's preferences with course details and deadline info
 router.get('/', authMiddleware, requireStudent, async (_req: Request, res: Response): Promise<void> => {
   try {
     const locals = (res as Response & { locals: AuthLocals }).locals;
@@ -33,7 +34,11 @@ router.get('/', authMiddleware, requireStudent, async (_req: Request, res: Respo
         };
       })
     );
-    res.json({ preferences: result });
+    res.json({
+      preferences: result,
+      deadline: PREFERENCE_DEADLINE,
+      can_edit: canSubmitPreferences(),
+    });
   } catch (err) {
     console.error('Get preferences error:', err);
     res.status(500).json({ error: 'Failed to get preferences' });
@@ -41,8 +46,15 @@ router.get('/', authMiddleware, requireStudent, async (_req: Request, res: Respo
 });
 
 // PUT /preferences – replace full preference list (array of { course_id, rank })
+// Forbidden after deadline (if configured)
 router.put('/', authMiddleware, requireStudent, async (req: Request, res: Response): Promise<void> => {
   try {
+    // Check deadline first
+    if (!canSubmitPreferences()) {
+      res.status(403).json({ error: 'Preference submission deadline has passed' });
+      return;
+    }
+
     const locals = (res as Response & { locals: AuthLocals }).locals;
     const rollNo = locals.user.sub;
     const body = req.body as { preferences?: Array<{ course_id: string; rank: number }> };

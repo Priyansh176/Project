@@ -14,7 +14,7 @@ type AuthState = {
   role: 'student' | 'admin' | null;
   accessToken: string | null;
   loading: boolean;
-  login: (emailOrRoll: string, password: string) => Promise<void>;
+  login: (emailOrRoll: string, password: string) => Promise<'student' | 'admin'>;
   signup: (body: SignupBody) => Promise<void>;
   logout: () => void;
 };
@@ -75,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(data.accessToken);
     setUser(data.user);
     setRole(data.role);
+    return data.role;
   }, []);
 
   const signup = useCallback(async (body: SignupBody) => {
