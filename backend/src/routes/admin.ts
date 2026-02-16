@@ -82,6 +82,97 @@ router.patch('/:rollNo/reject', authMiddleware, requireAdmin, async (req: Reques
   }
 });
 
+// PATCH /admin/students/:rollNo/cgpa – update student CGPA
+router.patch('/:rollNo/cgpa', authMiddleware, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { rollNo } = req.params;
+    const { cgpa } = req.body;
+
+    // Validate CGPA
+    if (cgpa === undefined || cgpa === null) {
+      res.status(400).json({ error: 'CGPA is required' });
+      return;
+    }
+
+    const cgpaNum = parseFloat(cgpa);
+    if (isNaN(cgpaNum) || cgpaNum < 0 || cgpaNum > 10) {
+      res.status(400).json({ error: 'CGPA must be between 0 and 10' });
+      return;
+    }
+
+    // Check student exists
+    const students = await query<{ Roll_No: string }[]>('SELECT Roll_No FROM STUDENT WHERE Roll_No = ?', [rollNo]);
+    if (students.length === 0) {
+      res.status(404).json({ error: 'Student not found' });
+      return;
+    }
+
+    // Update CGPA
+    await query('UPDATE STUDENT SET CGPA = ? WHERE Roll_No = ?', [cgpaNum, rollNo]);
+
+    res.json({ message: 'CGPA updated successfully', roll_no: rollNo, cgpa: cgpaNum });
+  } catch (err) {
+    console.error('Update CGPA error:', err);
+    res.status(500).json({ error: 'Failed to update CGPA' });
+  }
+});
+
+// POST /admin/students/cgpa/bulk – bulk update CGPAs from CSV data
+router.post('/students/cgpa/bulk', authMiddleware, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { students } = req.body;
+
+    if (!Array.isArray(students) || students.length === 0) {
+      res.status(400).json({ error: 'Students array is required' });
+      return;
+    }
+
+    let updated = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const student of students) {
+      const { roll_no, cgpa } = student;
+
+      if (!roll_no || cgpa === undefined || cgpa === null) {
+        failed++;
+        errors.push(`Missing roll_no or cgpa for entry: ${JSON.stringify(student)}`);
+        continue;
+      }
+
+      const cgpaNum = parseFloat(cgpa);
+      if (isNaN(cgpaNum) || cgpaNum < 0 || cgpaNum > 10) {
+        failed++;
+        errors.push(`Invalid CGPA ${cgpa} for ${roll_no} (must be 0-10)`);
+        continue;
+      }
+
+      try {
+        const result = await query('UPDATE STUDENT SET CGPA = ? WHERE Roll_No = ?', [cgpaNum, roll_no]);
+        if ((result as any).affectedRows > 0) {
+          updated++;
+        } else {
+          failed++;
+          errors.push(`Student not found: ${roll_no}`);
+        }
+      } catch (err) {
+        failed++;
+        errors.push(`Failed to update ${roll_no}: ${err}`);
+      }
+    }
+
+    res.json({
+      message: 'Bulk CGPA update completed',
+      updated,
+      failed,
+      errors: errors.slice(0, 10), // Return first 10 errors only
+    });
+  } catch (err) {
+    console.error('Bulk CGPA update error:', err);
+    res.status(500).json({ error: 'Failed to process bulk update' });
+  }
+});
+
 // GET /admin/allotment/stats – get overall statistics
 router.get('/allotment/stats', authMiddleware, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -122,7 +213,9 @@ router.get('/allotment/stats', authMiddleware, requireAdmin, async (_req: Reques
 // POST /admin/allotment/run – trigger allotment algorithm
 router.post('/allotment/run', authMiddleware, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
   try {
+    console.log('Starting allotment process...');
     const result = await runAllotment();
+    console.log('Allotment completed:', result);
     res.json({
       message: 'Allotment completed',
       result: {
@@ -134,7 +227,8 @@ router.post('/allotment/run', authMiddleware, requireAdmin, async (_req: Request
     });
   } catch (err) {
     console.error('Allotment run error:', err);
-    res.status(500).json({ error: 'Failed to run allotment' });
+    const errorMessage = err instanceof Error ? err.message : 'Failed to run allotment';
+    res.status(500).json({ error: errorMessage, details: err instanceof Error ? err.stack : undefined });
   }
 });
 

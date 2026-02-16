@@ -3,7 +3,9 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { BookOpen, Plus, Edit2, Trash2, X } from 'lucide-react';
 
 interface Course {
   course_id: string;
@@ -16,11 +18,36 @@ interface Course {
   seats_allotted: number;
 }
 
+interface CourseForm {
+  course_id: string;
+  course_name: string;
+  credits: number;
+  faculty: string;
+  slot: string;
+  capacity: number;
+}
+
+const EMPTY_FORM: CourseForm = {
+  course_id: '',
+  course_name: '',
+  credits: 3,
+  faculty: 'TBA',
+  slot: 'TBA',
+  capacity: 30,
+};
+
 export function AdminCourses() {
   const { accessToken } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<CourseForm>(EMPTY_FORM);
+  const [formLoading, setFormLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const loadCourses = () => {
     if (!accessToken) return;
@@ -34,6 +61,101 @@ export function AdminCourses() {
   useEffect(() => {
     loadCourses();
   }, [accessToken]);
+
+  const handleOpenForm = (course?: Course) => {
+    if (course) {
+      setEditingId(course.course_id);
+      setFormData({
+        course_id: course.course_id,
+        course_name: course.course_name,
+        credits: course.credits,
+        faculty: course.faculty,
+        slot: course.slot,
+        capacity: course.capacity,
+      });
+    } else {
+      setEditingId(null);
+      setFormData(EMPTY_FORM);
+    }
+    setShowForm(true);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData(EMPTY_FORM);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessToken) return;
+
+    // Validate form
+    if (!formData.course_id.trim() || !formData.course_name.trim()) {
+      setError('Course ID and Name are required');
+      return;
+    }
+    if (formData.credits < 1 || formData.capacity < 0) {
+      setError('Credits must be ≥ 1, Capacity must be ≥ 0');
+      return;
+    }
+
+    setFormLoading(true);
+    setError('');
+    try {
+      if (editingId) {
+        // Update course
+        await api(`/courses/${editingId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            course_name: formData.course_name,
+            credits: formData.credits,
+            faculty: formData.faculty,
+            slot: formData.slot,
+            capacity: formData.capacity,
+          }),
+          token: accessToken,
+        });
+        setSuccess(`Course ${editingId} updated successfully`);
+      } else {
+        // Create course
+        await api('/courses', {
+          method: 'POST',
+          body: JSON.stringify(formData),
+          token: accessToken,
+        });
+        setSuccess(`Course ${formData.course_id} created successfully`);
+      }
+      loadCourses();
+      handleCloseForm();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save course');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDelete = async (courseId: string) => {
+    if (!accessToken) return;
+
+    setFormLoading(true);
+    setError('');
+    try {
+      await api(`/courses/${courseId}`, {
+        method: 'DELETE',
+        token: accessToken,
+      });
+      setSuccess(`Course ${courseId} deleted successfully`);
+      loadCourses();
+      setDeleteConfirm(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete course');
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -49,15 +171,128 @@ export function AdminCourses() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Course Management</h1>
-          <p className="text-muted-foreground mt-1">View and manage courses</p>
+          <p className="text-muted-foreground mt-1">Add, edit, and manage courses</p>
         </div>
-        <Button className="bg-indigo-600 hover:bg-indigo-700" disabled>
+        <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => handleOpenForm()}>
           <Plus size={18} className="mr-2" />
-          Add Course (Coming Soon)
+          Add Course
         </Button>
       </div>
 
       {error && <p className="text-sm text-destructive bg-red-50 p-3 rounded-md">{error}</p>}
+      {success && <p className="text-sm text-green-600 bg-green-50 p-3 rounded-md">{success}</p>}
+
+      {/* Add/Edit Course Form */}
+      {showForm && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle>{editingId ? 'Edit Course' : 'Add New Course'}</CardTitle>
+            <button
+              onClick={handleCloseForm}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <X size={20} />
+            </button>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Course ID */}
+                <div className="space-y-2">
+                  <Label htmlFor="course_id">Course ID *</Label>
+                  <Input
+                    id="course_id"
+                    placeholder="e.g., CS101"
+                    value={formData.course_id}
+                    onChange={(e) =>
+                      setFormData({ ...formData, course_id: e.target.value.toUpperCase() })
+                    }
+                    disabled={!!editingId}
+                    className="disabled:opacity-50"
+                  />
+                  {editingId && <p className="text-xs text-muted-foreground">Cannot change ID</p>}
+                </div>
+
+                {/* Course Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="course_name">Course Name *</Label>
+                  <Input
+                    id="course_name"
+                    placeholder="e.g., Data Structures"
+                    value={formData.course_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, course_name: e.target.value })
+                    }
+                  />
+                </div>
+
+                {/* Credits */}
+                <div className="space-y-2">
+                  <Label htmlFor="credits">Credits *</Label>
+                  <Input
+                    id="credits"
+                    type="number"
+                    min="1"
+                    value={formData.credits}
+                    onChange={(e) =>
+                      setFormData({ ...formData, credits: parseInt(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+
+                {/* Capacity */}
+                <div className="space-y-2">
+                  <Label htmlFor="capacity">Capacity *</Label>
+                  <Input
+                    id="capacity"
+                    type="number"
+                    min="0"
+                    value={formData.capacity}
+                    onChange={(e) =>
+                      setFormData({ ...formData, capacity: parseInt(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+
+                {/* Faculty */}
+                <div className="space-y-2">
+                  <Label htmlFor="faculty">Faculty</Label>
+                  <Input
+                    id="faculty"
+                    placeholder="e.g., Dr. Smith"
+                    value={formData.faculty}
+                    onChange={(e) =>
+                      setFormData({ ...formData, faculty: e.target.value })
+                    }
+                  />
+                </div>
+
+                {/* Slot */}
+                <div className="space-y-2">
+                  <Label htmlFor="slot">Slot/Timing</Label>
+                  <Input
+                    id="slot"
+                    placeholder="e.g., MWF 10:00-11:00"
+                    value={formData.slot}
+                    onChange={(e) =>
+                      setFormData({ ...formData, slot: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={formLoading}>
+                  {formLoading ? 'Saving...' : editingId ? 'Update Course' : 'Create Course'}
+                </Button>
+                <Button type="button" variant="outline" onClick={handleCloseForm}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Courses Table */}
       <Card>
@@ -81,8 +316,8 @@ export function AdminCourses() {
                     <th className="text-left py-2 px-3 font-medium">Credits</th>
                     <th className="text-left py-2 px-3 font-medium">Slot</th>
                     <th className="text-left py-2 px-3 font-medium">Capacity</th>
-                    <th className="text-left py-2 px-3 font-medium">Allotted</th>
-                    <th className="text-left py-2 px-3 font-medium">Available</th>
+                    <th className="text-left py-2 px-3 font-medium">Status</th>
+                    <th className="text-right py-2 px-3 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -99,20 +334,46 @@ export function AdminCourses() {
                         </span>
                       </td>
                       <td className="py-3 px-3">
-                        <span className="inline-flex items-center justify-center bg-green-50 text-green-700 px-3 py-1 rounded-full font-medium text-xs">
-                          {course.seats_allotted}
+                        <span className="inline-flex items-center justify-center bg-green-50 text-green-700 px-2 py-1 rounded-full font-medium text-xs">
+                          Active
                         </span>
                       </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`inline-flex items-center justify-center px-3 py-1 rounded-full font-medium text-xs ${
-                            course.seats_available > 0
-                              ? 'bg-orange-50 text-orange-700'
-                              : 'bg-red-50 text-red-700'
-                          }`}
+                      <td className="py-3 px-3 text-right space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenForm(course)}
                         >
-                          {course.seats_available}
-                        </span>
+                          <Edit2 size={14} />
+                        </Button>
+
+                        {deleteConfirm === course.course_id ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDelete(course.course_id)}
+                              disabled={formLoading}
+                            >
+                              Confirm
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDeleteConfirm(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setDeleteConfirm(course.course_id)}
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

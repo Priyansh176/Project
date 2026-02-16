@@ -23,7 +23,7 @@ async function loadPreferencesWithCGPA(): Promise<StudentPreference[]> {
       p.STUDENT_Roll_No as roll_no,
       s.CGPA as cgpa,
       p.COURSE_Course_ID as course_id,
-      p.\`Rank\` as rank
+      p.\`Rank\` as \`rank\`
     FROM PREFERENCE p
     JOIN STUDENT s ON p.STUDENT_Roll_No = s.Roll_No
     WHERE s.Status = 'active'
