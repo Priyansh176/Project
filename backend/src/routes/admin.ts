@@ -201,6 +201,9 @@ router.get('/allotment/stats', authMiddleware, requireAdmin, async (_req: Reques
     const studentCount = await query<{ count: string }[]>(
       'SELECT COUNT(*) as count FROM STUDENT WHERE Status = "active"'
     );
+    const pendingApprovalsCount = await query<{ count: string }[]>(
+      'SELECT COUNT(*) as count FROM STUDENT WHERE Status = "inactive"'
+    );
     const courseCount = await query<{ count: string }[]>(
       'SELECT COUNT(*) as count FROM COURSE WHERE Status = "active"'
     );
@@ -220,6 +223,7 @@ router.get('/allotment/stats', authMiddleware, requireAdmin, async (_req: Reques
 
     res.json({
       total_students: parseInt(studentCount[0]?.count ?? '0', 10),
+      pending_approvals: parseInt(pendingApprovalsCount[0]?.count ?? '0', 10),
       total_courses: parseInt(courseCount[0]?.count ?? '0', 10),
       total_capacity: totalCap,
       seats_allotted: allotted,

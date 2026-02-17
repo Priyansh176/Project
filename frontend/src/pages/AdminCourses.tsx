@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { BookOpen, Plus, Edit2, Trash2, X, Users } from 'lucide-react';
 
 interface Course {
   course_id: string;
@@ -21,6 +21,24 @@ interface Course {
   max_choices?: number | null;
   semester?: number | null;
   department_id?: number | null;
+}
+
+interface EnrolledStudent {
+  roll_no: string;
+  name: string;
+  email: string;
+  cgpa: number | null;
+  status: string;
+  enrollment_status: string;
+  enrollment_date: string;
+}
+
+interface CourseEnrollmentData {
+  course_id: string;
+  total_enrolled: number;
+  allotted: number;
+  waitlisted: number;
+  students: EnrolledStudent[];
 }
 
 interface CourseForm {
@@ -58,11 +76,25 @@ export function AdminCourses() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
+  // Search
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CourseForm>(EMPTY_FORM);
   const [formLoading, setFormLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  
+  // Enrolled students modal
+  const [showEnrolledStudents, setShowEnrolledStudents] = useState(false);
+  const [selectedCourseForStudents, setSelectedCourseForStudents] = useState<string | null>(null);
+  const [enrollmentData, setEnrollmentData] = useState<CourseEnrollmentData | null>(null);
+  const [enrollmentLoading, setEnrollmentLoading] = useState(false);
+  const [enrollmentError, setEnrollmentError] = useState('');
 
   const loadCourses = () => {
     if (!accessToken) return;
@@ -191,6 +223,51 @@ export function AdminCourses() {
       setFormLoading(false);
     }
   };
+
+  const handleViewEnrolledStudents = async (courseId: string) => {
+    if (!accessToken) return;
+    
+    setSelectedCourseForStudents(courseId);
+    setShowEnrolledStudents(true);
+    setEnrollmentLoading(true);
+    setEnrollmentError('');
+    
+    try {
+      const data = await api<CourseEnrollmentData>(`/courses/${courseId}/students`, {
+        token: accessToken,
+      });
+      setEnrollmentData(data);
+    } catch (e) {
+      setEnrollmentError(e instanceof Error ? e.message : 'Failed to load enrolled students');
+    } finally {
+      setEnrollmentLoading(false);
+    }
+  };
+
+  const handleCloseEnrolledStudents = () => {
+    setShowEnrolledStudents(false);
+    setSelectedCourseForStudents(null);
+    setEnrollmentData(null);
+    setEnrollmentError('');
+  };
+
+  // Filter courses
+  const filteredCourses = courses.filter((c) =>
+    c.course_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.course_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.faculty.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCourses = filteredCourses.slice(startIndex, endIndex);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   if (loading) {
     return (
@@ -424,90 +501,244 @@ export function AdminCourses() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen size={20} />
-            Active Courses ({courses.length})
+            Courses ({filteredCourses.length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {courses.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No courses available</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr>
-                    <th className="text-left py-2 px-3 font-medium">Code</th>
-                    <th className="text-left py-2 px-3 font-medium">Name</th>
-                    <th className="text-left py-2 px-3 font-medium">Faculty</th>
-                    <th className="text-left py-2 px-3 font-medium">Credits</th>
-                    <th className="text-left py-2 px-3 font-medium">Slot</th>
-                    <th className="text-left py-2 px-3 font-medium">Capacity</th>
-                    <th className="text-left py-2 px-3 font-medium">Status</th>
-                    <th className="text-right py-2 px-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {courses.map((course) => (
-                    <tr key={course.course_id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-3 font-mono font-bold text-indigo-600">{course.course_id}</td>
-                      <td className="py-3 px-3 font-medium">{course.course_name}</td>
-                      <td className="py-3 px-3 text-muted-foreground text-xs">{course.faculty}</td>
-                      <td className="py-3 px-3">{course.credits}</td>
-                      <td className="py-3 px-3 text-xs text-muted-foreground">{course.slot}</td>
-                      <td className="py-3 px-3">
-                        <span className="inline-flex items-center justify-center bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium text-xs">
-                          {course.capacity}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="inline-flex items-center justify-center bg-green-50 text-green-700 px-2 py-1 rounded-full font-medium text-xs">
-                          Active
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenForm(course)}
-                        >
-                          <Edit2 size={14} />
-                        </Button>
+        <CardContent className="space-y-4">
+          {/* Search Input */}
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="w-full md:w-1/3">
+              <Input
+                placeholder="Search by code, name, or faculty..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Showing <span className="font-medium">{Math.min(itemsPerPage, paginatedCourses.length)}</span> of{' '}
+              <span className="font-medium">{filteredCourses.length}</span> courses
+              {searchTerm && ` (filtered from ${courses.length})`}
+            </div>
+          </div>
 
-                        {deleteConfirm === course.course_id ? (
-                          <>
+          {/* Table */}
+          {filteredCourses.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              {searchTerm ? 'No courses match your search' : 'No courses available'}
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b">
+                    <tr>
+                      <th className="text-left py-2 px-3 font-medium">Code</th>
+                      <th className="text-left py-2 px-3 font-medium">Name</th>
+                      <th className="text-left py-2 px-3 font-medium">Faculty</th>
+                      <th className="text-left py-2 px-3 font-medium">Credits</th>
+                      <th className="text-left py-2 px-3 font-medium">Slot</th>
+                      <th className="text-left py-2 px-3 font-medium">Capacity</th>
+                      <th className="text-left py-2 px-3 font-medium">Status</th>
+                      <th className="text-right py-2 px-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedCourses.map((course) => (
+                      <tr key={course.course_id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-3 font-mono font-bold text-indigo-600">{course.course_id}</td>
+                        <td className="py-3 px-3 font-medium">{course.course_name}</td>
+                        <td className="py-3 px-3 text-muted-foreground text-xs">{course.faculty}</td>
+                        <td className="py-3 px-3">{course.credits}</td>
+                        <td className="py-3 px-3 text-xs text-muted-foreground">{course.slot}</td>
+                        <td className="py-3 px-3">
+                          <span className="inline-flex items-center justify-center bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium text-xs">
+                            {course.capacity}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="inline-flex items-center justify-center bg-green-50 text-green-700 px-2 py-1 rounded-full font-medium text-xs">
+                            Active
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewEnrolledStudents(course.course_id)}
+                          >
+                            <Users size={14} className="mr-1" />
+                            Students
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenForm(course)}
+                          >
+                            <Edit2 size={14} />
+                          </Button>
+
+                          {deleteConfirm === course.course_id ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDelete(course.course_id)}
+                                disabled={formLoading}
+                              >
+                                Confirm
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setDeleteConfirm(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={() => handleDelete(course.course_id)}
-                              disabled={formLoading}
+                              onClick={() => setDeleteConfirm(course.course_id)}
                             >
-                              Confirm
+                              <Trash2 size={14} />
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setDeleteConfirm(null)}
-                            >
-                              Cancel
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => setDeleteConfirm(course.course_id)}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <Button
+                    variant="outline"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <div className="text-sm text-muted-foreground">
+                    Page <span className="font-medium">{currentPage}</span> of{' '}
+                    <span className="font-medium">{totalPages}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
+
+      {/* Enrolled Students Modal */}
+      {showEnrolledStudents && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto m-4">
+            <CardHeader className="flex flex-row items-center justify-between pb-3 sticky top-0 bg-white border-b">
+              <CardTitle>Enrolled Students</CardTitle>
+              <button
+                onClick={handleCloseEnrolledStudents}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {enrollmentError && (
+                <p className="text-sm text-destructive bg-red-50 p-3 rounded-md mb-4">{enrollmentError}</p>
+              )}
+
+              {enrollmentLoading ? (
+                <p className="text-muted-foreground">Loading enrolled students...</p>
+              ) : enrollmentData ? (
+                <div className="space-y-4">
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <Card>
+                      <CardContent className="pt-6">
+                        <p className="text-sm text-muted-foreground">Total Enrolled</p>
+                        <p className="text-2xl font-bold">{enrollmentData.total_enrolled}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6">
+                        <p className="text-sm text-muted-foreground">Allotted</p>
+                        <p className="text-2xl font-bold text-green-600">{enrollmentData.allotted}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6">
+                        <p className="text-sm text-muted-foreground">Waitlisted</p>
+                        <p className="text-2xl font-bold text-orange-600">{enrollmentData.waitlisted}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Students Table */}
+                  {enrollmentData.students.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No students enrolled in this course</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="border-b">
+                          <tr>
+                            <th className="text-left py-2 px-3 font-medium">Roll No</th>
+                            <th className="text-left py-2 px-3 font-medium">Name</th>
+                            <th className="text-left py-2 px-3 font-medium">Email</th>
+                            <th className="text-left py-2 px-3 font-medium">CGPA</th>
+                            <th className="text-left py-2 px-3 font-medium">Enrollment Status</th>
+                            <th className="text-left py-2 px-3 font-medium">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {enrollmentData.students.map((student) => (
+                            <tr key={student.roll_no} className="border-b hover:bg-gray-50">
+                              <td className="py-3 px-3 font-mono font-medium">{student.roll_no}</td>
+                              <td className="py-3 px-3">{student.name}</td>
+                              <td className="py-3 px-3 text-muted-foreground text-xs">{student.email}</td>
+                              <td className="py-3 px-3">{student.cgpa ?? '—'}</td>
+                              <td className="py-3 px-3">
+                                {student.enrollment_status === 'allotted' ? (
+                                  <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded text-xs font-medium">
+                                    Allotted
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 bg-orange-50 text-orange-700 px-2 py-1 rounded text-xs font-medium">
+                                    Waitlisted
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-xs text-muted-foreground">
+                                {new Date(student.enrollment_date).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              <div className="flex justify-end mt-6">
+                <Button variant="outline" onClick={handleCloseEnrolledStudents}>
+                  Close
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

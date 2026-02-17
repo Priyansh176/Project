@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, BookOpen, Zap, TrendingUp } from 'lucide-react';
+import { Users, BookOpen, Zap, TrendingUp, Clock } from 'lucide-react';
 
 interface DashboardStats {
   total_students: number;
+  pending_approvals: number;
   total_courses: number;
   total_capacity: number;
   seats_allotted: number;
@@ -55,7 +56,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Students */}
         <Card>
           <CardHeader className="pb-3">
@@ -67,6 +68,20 @@ export function AdminDashboard() {
           <CardContent>
             <div className="text-3xl font-bold">{stats?.total_students ?? 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Active students</p>
+          </CardContent>
+        </Card>
+
+        {/* Pending Approvals */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats?.pending_approvals ?? 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">Awaiting review</p>
           </CardContent>
         </Card>
 

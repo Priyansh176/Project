@@ -24,6 +24,13 @@ export function AdminStudents() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   
+  // Search
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
   // CGPA editing
   const [editingCGPA, setEditingCGPA] = useState<string | null>(null);
   const [cgpaValue, setCgpaValue] = useState('');
@@ -222,6 +229,31 @@ export function AdminStudents() {
   const pendingStudents = students.filter((s) => s.status === 'inactive');
   const approvedStudents = students.filter((s) => s.status === 'active');
 
+  // Apply search filter
+  const filteredPending = pendingStudents.filter((s) =>
+    s.roll_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  const filteredApproved = approvedStudents.filter((s) =>
+    s.roll_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination logic
+  const allFilteredStudents = [...filteredPending, ...filteredApproved];
+  const totalPages = Math.ceil(allFilteredStudents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedStudents = allFilteredStudents.slice(startIndex, endIndex);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -288,173 +320,183 @@ export function AdminStudents() {
         </Card>
       )}
 
-      {/* Pending Approvals */}
+      {/* Search and Stats */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock size={20} />
-            Pending Approval ({pendingStudents.length})
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Students awaiting approval</p>
-        </CardHeader>
-        <CardContent>
-          {pendingStudents.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No pending approvals</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr>
-                    <th className="text-left py-2 px-3 font-medium">Roll No</th>
-                    <th className="text-left py-2 px-3 font-medium">Name</th>
-                    <th className="text-left py-2 px-3 font-medium">Email</th>
-                    <th className="text-left py-2 px-3 font-medium">CGPA</th>
-                    <th className="text-right py-2 px-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingStudents.map((student) => (
-                    <tr key={student.roll_no} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-3 font-mono font-medium">{student.roll_no}</td>
-                      <td className="py-3 px-3">{student.name}</td>
-                      <td className="py-3 px-3 text-muted-foreground text-xs">{student.email}</td>
-                      <td className="py-3 px-3">{student.cgpa ?? '—'}</td>
-                      <td className="py-3 px-3 text-right space-x-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="bg-green-600 hover:bg-green-700"
-                          disabled={actionLoading === student.roll_no}
-                          onClick={() => approveStudent(student.roll_no)}
-                        >
-                          <CheckCircle2 size={14} className="mr-1" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={actionLoading === student.roll_no}
-                          onClick={() => rejectStudent(student.roll_no)}
-                        >
-                          <XCircle size={14} className="mr-1" />
-                          Reject
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={actionLoading === student.roll_no}
-                          onClick={() => deleteStudent(student.roll_no, student.name)}
-                        >
-                          <Trash2 size={14} className="mr-1" />
-                          Delete
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="w-full md:w-1/3">
+              <Input
+                placeholder="Search by roll no, name, or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
             </div>
-          )}
+            <div className="text-sm text-muted-foreground">
+              Showing <span className="font-medium">{Math.min(itemsPerPage, paginatedStudents.length)}</span> of{' '}
+              <span className="font-medium">{allFilteredStudents.length}</span> students
+              {searchTerm && ` (filtered from ${students.length})`}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Approved Students */}
+      {/* Students Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 size={20} className="text-green-600" />
-            Approved Students ({approvedStudents.length})
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Active students in the system</p>
+          <CardTitle>All Students</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Pending: {filteredPending.length} | Approved: {filteredApproved.length}
+          </p>
         </CardHeader>
         <CardContent>
-          {approvedStudents.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No approved students</p>
+          {allFilteredStudents.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              {searchTerm ? 'No students match your search' : 'No students found'}
+            </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr>
-                    <th className="text-left py-2 px-3 font-medium">Roll No</th>
-                    <th className="text-left py-2 px-3 font-medium">Name</th>
-                    <th className="text-left py-2 px-3 font-medium">Email</th>
-                    <th className="text-left py-2 px-3 font-medium">CGPA</th>
-                    <th className="text-left py-2 px-3 font-medium">Status</th>
-                    <th className="text-right py-2 px-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {approvedStudents.map((student) => (
-                    <tr key={student.roll_no} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-3 font-mono font-medium">{student.roll_no}</td>
-                      <td className="py-3 px-3">{student.name}</td>
-                      <td className="py-3 px-3 text-muted-foreground text-xs">{student.email}</td>
-                      <td className="py-3 px-3">
-                        {editingCGPA === student.roll_no ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              max="10"
-                              value={cgpaValue}
-                              onChange={(e) => setCgpaValue(e.target.value)}
-                              className="w-20"
-                              autoFocus
-                            />
-                            <Button
-                              size="sm"
-                              onClick={() => saveCGPA(student.roll_no)}
-                              disabled={actionLoading === student.roll_no}
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={cancelEditCGPA}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="font-medium">{student.cgpa ?? '—'}</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded text-xs font-medium">
-                          <CheckCircle2 size={12} />
-                          Active
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        {editingCGPA !== student.roll_no && (
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => startEditCGPA(student.roll_no, student.cgpa)}
-                            >
-                              <Edit2 size={14} className="mr-1" />
-                              Edit CGPA
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => deleteStudent(student.roll_no, student.name)}
-                              disabled={actionLoading === student.roll_no}
-                            >
-                              <Trash2 size={14} className="mr-1" />
-                              Delete
-                            </Button>
-                          </div>
-                        )}
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b">
+                    <tr>
+                      <th className="text-left py-2 px-3 font-medium">Roll No</th>
+                      <th className="text-left py-2 px-3 font-medium">Name</th>
+                      <th className="text-left py-2 px-3 font-medium">Email</th>
+                      <th className="text-left py-2 px-3 font-medium">CGPA</th>
+                      <th className="text-left py-2 px-3 font-medium">Status</th>
+                      <th className="text-right py-2 px-3 font-medium">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedStudents.map((student) => (
+                      <tr key={student.roll_no} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-3 font-mono font-medium">{student.roll_no}</td>
+                        <td className="py-3 px-3">{student.name}</td>
+                        <td className="py-3 px-3 text-muted-foreground text-xs">{student.email}</td>
+                        <td className="py-3 px-3">
+                          {editingCGPA === student.roll_no ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="10"
+                                value={cgpaValue}
+                                onChange={(e) => setCgpaValue(e.target.value)}
+                                className="w-20"
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => saveCGPA(student.roll_no)}
+                                disabled={actionLoading === student.roll_no}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={cancelEditCGPA}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="font-medium">{student.cgpa ?? '—'}</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          {student.status === 'inactive' ? (
+                            <span className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 py-1 rounded text-xs font-medium">
+                              <Clock size={12} />
+                              Pending
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded text-xs font-medium">
+                              <CheckCircle2 size={12} />
+                              Active
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          {editingCGPA !== student.roll_no && (
+                            <div className="flex gap-2 justify-end flex-wrap">
+                              {student.status === 'inactive' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    className="bg-green-600 hover:bg-green-700"
+                                    disabled={actionLoading === student.roll_no}
+                                    onClick={() => approveStudent(student.roll_no)}
+                                  >
+                                    <CheckCircle2 size={14} className="mr-1" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={actionLoading === student.roll_no}
+                                    onClick={() => rejectStudent(student.roll_no)}
+                                  >
+                                    <XCircle size={14} className="mr-1" />
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              {student.status === 'active' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => startEditCGPA(student.roll_no, student.cgpa)}
+                                >
+                                  <Edit2 size={14} className="mr-1" />
+                                  Edit CGPA
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => deleteStudent(student.roll_no, student.name)}
+                                disabled={actionLoading === student.roll_no}
+                              >
+                                <Trash2 size={14} className="mr-1" />
+                                Delete
+                              </Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <Button
+                    variant="outline"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <div className="text-sm text-muted-foreground">
+                    Page <span className="font-medium">{currentPage}</span> of{' '}
+                    <span className="font-medium">{totalPages}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

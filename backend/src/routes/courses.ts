@@ -226,6 +226,71 @@ router.patch('/:courseId', authMiddleware, requireAdmin, async (req: Request, re
   }
 });
 
+// GET /courses/:courseId/students – get students enrolled in a specific course (admin only)
+router.get('/:courseId/students', authMiddleware, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { courseId } = req.params;
+    
+    // Verify course exists
+    const courses = await query<CourseRow[]>('SELECT Course_ID FROM COURSE WHERE Course_ID = ?', [courseId]);
+    if (courses.length === 0) {
+      res.status(404).json({ error: 'Course not found' });
+      return;
+    }
+
+    // Get enrolled students with their enrollment status
+    const students = await query<
+      {
+        roll_no: string;
+        name: string;
+        email: string;
+        cgpa: number | null;
+        status: string;
+        enrollment_status: string;
+        enrollment_date: string;
+      }[]
+    >(`
+      SELECT 
+        s.Roll_No as roll_no,
+        s.Name as name,
+        s.Email as email,
+        s.CGPA as cgpa,
+        s.Status as status,
+        e.Status as enrollment_status,
+        e.Enrollment_Date as enrollment_date
+      FROM ENROLLMENT e
+      JOIN STUDENT s ON e.STUDENT_Roll_No = s.Roll_No
+      WHERE e.COURSE_Course_ID = ?
+      ORDER BY 
+        CASE 
+          WHEN e.Status = 'allotted' THEN 1
+          WHEN e.Status = 'waitlisted' THEN 2
+          ELSE 3
+        END,
+        e.Enrollment_Date ASC
+    `, [courseId]);
+
+    res.json({
+      course_id: courseId,
+      total_enrolled: students.length,
+      allotted: students.filter(s => s.enrollment_status === 'allotted').length,
+      waitlisted: students.filter(s => s.enrollment_status === 'waitlisted').length,
+      students: students.map(s => ({
+        roll_no: s.roll_no,
+        name: s.name,
+        email: s.email,
+        cgpa: s.cgpa,
+        status: s.status,
+        enrollment_status: s.enrollment_status,
+        enrollment_date: s.enrollment_date,
+      })),
+    });
+  } catch (err) {
+    console.error('Get course students error:', err);
+    res.status(500).json({ error: 'Failed to fetch course students' });
+  }
+});
+
 // DELETE /courses/:courseId – delete course (admin only; FK cascade will clean ENROLLMENT, PREFERENCE, ADM_IN_ACCESS)
 router.delete('/:courseId', authMiddleware, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
