@@ -12,7 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'admin@nith.ac.in';
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'admin123';
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'admin@123';
 const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? 'Admin';
 
 async function main() {

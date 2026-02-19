@@ -6,7 +6,7 @@ import { createConnection } from 'mysql2/promise';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const email = process.argv[2] ?? 'test2@college.edu';
+const email = process.argv[2] ?? 'test2@nith.ac.in';
 
 async function main() {
   const conn = await createConnection({

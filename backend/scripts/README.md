@@ -30,7 +30,7 @@
    ```bash
    npx tsx scripts/seed-admin.ts
    ```
-   Default: `admin@nith.ac.in` / `admin123`
+   Default: `admin@nith.ac.in` / `admin@123`
 
 6. **Approve a student**: set `Status = 'active'` for that student, or run:
    ```bash
