@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../config/db.js';
+import { callProcedure } from '../config/db.js';
 import { authMiddleware, requireStudent, type AuthLocals } from '../middleware/auth.js';
 
 const router = Router();
@@ -30,32 +30,10 @@ router.get('/me', authMiddleware, requireStudent, async (_req: Request, res: Res
     const rollNo = locals.user.sub;
 
     // Get enrollments (allotted + waitlisted)
-    const enrollments = await query<EnrollmentRow[]>(`
-      SELECT 
-        e.COURSE_Course_ID,
-        e.Status,
-        e.Enrollment_Date,
-        c.Course_Name,
-        c.Credits,
-        c.Faculty,
-        c.Slot,
-        c.Capacity,
-        c.Course_Type,
-        c.Elective_Slot,
-        c.Max_Choices
-      FROM ENROLLMENT e
-      JOIN COURSE c ON e.COURSE_Course_ID = c.Course_ID
-      WHERE e.STUDENT_Roll_No = ?
-      ORDER BY e.Enrollment_Date DESC
-    `, [rollNo]);
+    const enrollments = await callProcedure<EnrollmentRow>('sp_get_enrollments_by_student', [rollNo]);
 
     // Get original preferences for rank info
-    const preferences = await query<PrefRow[]>(`
-      SELECT COURSE_Course_ID, \`Rank\`
-      FROM PREFERENCE
-      WHERE STUDENT_Roll_No = ?
-      ORDER BY \`Rank\`
-    `, [rollNo]);
+    const preferences = await callProcedure<PrefRow>('sp_get_preferences_by_student', [rollNo]);
 
     const prefRankMap = new Map(preferences.map((p) => [p.COURSE_Course_ID, p.Rank]));
 

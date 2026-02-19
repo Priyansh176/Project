@@ -16,4 +16,17 @@ export async function query<T>(sql: string, params?: unknown[]): Promise<T> {
   return rows as T;
 }
 
+export async function callProcedure<T>(name: string, params: unknown[] = []): Promise<T[]> {
+  const placeholders = params.map(() => '?').join(', ');
+  const sql = `CALL ${name}(${placeholders})`;
+  const [rows] = await pool.query(sql, params);
+
+  if (Array.isArray(rows)) {
+    const first = Array.isArray(rows[0]) ? rows[0] : rows;
+    return first as unknown as T[];
+  }
+
+  return [];
+}
+
 export default pool;

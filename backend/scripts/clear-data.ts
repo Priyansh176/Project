@@ -20,15 +20,7 @@ async function main() {
     database: process.env.DB_NAME ?? 'course_allotment',
   });
 
-  await conn.query('SET FOREIGN_KEY_CHECKS = 0');
-  await conn.query('TRUNCATE TABLE ENROLLMENT');
-  await conn.query('TRUNCATE TABLE PREFERENCE');
-  await conn.query('TRUNCATE TABLE ADM_IN_ACCESS');
-  await conn.query('TRUNCATE TABLE COURSE');
-  await conn.query('TRUNCATE TABLE STUDENT');
-  await conn.query('TRUNCATE TABLE ADMIN');
-  await conn.query('TRUNCATE TABLE DEPARTMENT');
-  await conn.query('SET FOREIGN_KEY_CHECKS = 1');
+  await conn.query('CALL sp_clear_all_data()');
 
   console.log('All data cleared (schema unchanged).');
   await conn.end();

@@ -25,17 +25,16 @@ async function main() {
     database: process.env.DB_NAME ?? 'course_allotment',
   });
   for (const c of COURSES) {
-    const [dept] = await conn.execute<{ Department_ID: number }[]>(
-      'SELECT Department_ID FROM DEPARTMENT WHERE Department_Name = ?',
-      [c.dept]
-    );
-    const deptId = Array.isArray(dept) && dept.length ? (dept[0] as { Department_ID: number }).Department_ID : null;
-    await conn.execute(
-      `INSERT INTO COURSE (Course_ID, Course_Name, Credits, Department_ID, Semester, Status, Capacity, Slot, Faculty)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)
-       ON DUPLICATE KEY UPDATE Course_Name = ?, Capacity = ?`,
-      [c.id, c.name, c.credits, deptId, c.sem, c.capacity, c.slot, c.faculty, c.name, c.capacity]
-    );
+    await conn.execute('CALL sp_seed_course(?, ?, ?, ?, ?, ?, ?, ?)', [
+      c.id,
+      c.name,
+      c.credits,
+      c.dept,
+      c.sem,
+      c.capacity,
+      c.slot,
+      c.faculty,
+    ]);
   }
   console.log('Sample courses seeded:', COURSES.map((c) => c.id).join(', '));
   await conn.end();

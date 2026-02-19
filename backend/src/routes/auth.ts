@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../config/db.js';
+import { callProcedure } from '../config/db.js';
 import { hashPassword, comparePassword, signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/auth.js';
 import { authMiddleware, type AuthLocals } from '../middleware/auth.js';
 
@@ -29,22 +29,27 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
       return;
     }
     const rollNoStr = String(roll_no).trim();
-    const depts = await query<DeptRow[]>('SELECT Department_ID, Department_Name FROM DEPARTMENT WHERE Department_Name = ?', [String(department)]);
+    const depts = await callProcedure<DeptRow>('sp_get_department_by_name', [String(department)]);
     if (depts.length === 0) {
       res.status(400).json({ error: 'Invalid department' });
       return;
     }
     const departmentId = depts[0].Department_ID;
-    const existing = await query<{ Roll_No: string }[]>('SELECT Roll_No FROM STUDENT WHERE Email = ? OR Roll_No = ?', [emailStr, rollNoStr]);
+    const existing = await callProcedure<{ Roll_No: string }>('sp_get_student_by_email_or_roll', [emailStr, rollNoStr]);
     if (existing.length > 0) {
       res.status(409).json({ error: 'Email or roll number already registered' });
       return;
     }
     const passwordHash = await hashPassword(String(password));
-    await query(
-      'INSERT INTO STUDENT (Roll_No, Name, Email, Password, Department_ID, Semester, Status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [rollNoStr, String(name), emailStr, passwordHash, departmentId, Number(semester), 'inactive']
-    );
+    await callProcedure('sp_insert_student', [
+      rollNoStr,
+      String(name),
+      emailStr,
+      passwordHash,
+      departmentId,
+      Number(semester),
+      'inactive',
+    ]);
     res.status(201).json({ message: 'Signup successful. Await admin approval.' });
   } catch (err) {
     console.error('Signup error:', err);
@@ -61,7 +66,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
     const key = String(email_or_roll).trim();
-    const students = await query<StudentRow[]>('SELECT s.Roll_No, s.Name, s.Email, s.Department_ID, s.Semester, s.CGPA, s.Password, s.Status FROM STUDENT s WHERE s.Email = ? OR s.Roll_No = ?', [key, key]);
+    const students = await callProcedure<StudentRow>('sp_get_student_by_email_or_roll', [key, key]);
     if (students.length > 0) {
       const student = students[0];
       const ok = await comparePassword(String(password), student.Password);
@@ -75,7 +80,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       }
       let departmentName: string | null = null;
       if (student.Department_ID) {
-        const dept = await query<DeptRow[]>('SELECT Department_Name FROM DEPARTMENT WHERE Department_ID = ?', [student.Department_ID]);
+        const dept = await callProcedure<DeptRow>('sp_get_department_by_id', [student.Department_ID]);
         if (dept.length > 0) departmentName = dept[0].Department_Name;
       }
       const access = signAccessToken({ sub: student.Roll_No, role: 'student' });
@@ -88,7 +93,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
-    const admins = await query<AdminRow[]>('SELECT Admin_ID, Name, Email, Password FROM ADMIN WHERE Email = ?', [key]);
+    const admins = await callProcedure<AdminRow>('sp_get_admin_by_email', [key]);
     if (admins.length > 0) {
       const admin = admins[0];
       const ok = await comparePassword(String(password), admin.Password);

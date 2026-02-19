@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../config/db.js';
+import { callProcedure } from '../config/db.js';
 import { authMiddleware, requireStudent, type AuthLocals } from '../middleware/auth.js';
 import { PREFERENCE_DEADLINE, canSubmitPreferences } from '../config/constants.js';
 
@@ -13,16 +13,10 @@ router.get('/', authMiddleware, requireStudent, async (_req: Request, res: Respo
   try {
     const locals = (res as Response & { locals: AuthLocals }).locals;
     const rollNo = locals.user.sub;
-    const prefs = await query<PrefRow[]>(
-      'SELECT STUDENT_Roll_No, COURSE_Course_ID, `Rank` FROM PREFERENCE WHERE STUDENT_Roll_No = ? ORDER BY `Rank`',
-      [rollNo]
-    );
+    const prefs = await callProcedure<PrefRow>('sp_get_preferences_by_student', [rollNo]);
     const result = await Promise.all(
       prefs.map(async (p) => {
-        const courses = await query<CourseRow[]>(
-          'SELECT Course_ID, Course_Name, Credits, Faculty, Slot, Course_Type, Elective_Slot, Max_Choices FROM COURSE WHERE Course_ID = ?',
-          [p.COURSE_Course_ID]
-        );
+        const courses = await callProcedure<CourseRow>('sp_get_course_basic_by_id', [p.COURSE_Course_ID]);
         const c = courses[0];
         return {
           course_id: p.COURSE_Course_ID,
@@ -77,11 +71,7 @@ router.put('/', authMiddleware, requireStudent, async (req: Request, res: Respon
     }
     const courseIds = list.map((p) => String(p.course_id).trim());
     if (courseIds.length > 0) {
-      const placeholders = courseIds.map(() => '?').join(',');
-      const existing = await query<{ Course_ID: string }[]>(
-        `SELECT Course_ID FROM COURSE WHERE Course_ID IN (${placeholders})`,
-        courseIds
-      );
+      const existing = await callProcedure<{ Course_ID: string }>('sp_get_courses_by_ids_json', [JSON.stringify(courseIds)]);
       const validIds = new Set((existing as { Course_ID: string }[]).map((r) => r.Course_ID));
       for (const id of courseIds) {
         if (!validIds.has(id)) {
@@ -90,12 +80,9 @@ router.put('/', authMiddleware, requireStudent, async (req: Request, res: Respon
         }
       }
     }
-    await query('DELETE FROM PREFERENCE WHERE STUDENT_Roll_No = ?', [rollNo]);
+    await callProcedure('sp_delete_preferences_by_student', [rollNo]);
     for (let i = 0; i < list.length; i++) {
-      await query(
-        'INSERT INTO PREFERENCE (STUDENT_Roll_No, COURSE_Course_ID, `Rank`) VALUES (?, ?, ?)',
-        [rollNo, list[i].course_id.trim(), list[i].rank]
-      );
+      await callProcedure('sp_insert_preference', [rollNo, list[i].course_id.trim(), list[i].rank]);
     }
     res.json({ message: 'Preferences updated', count: list.length });
   } catch (err) {

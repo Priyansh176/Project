@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../config/db.js';
+import { callProcedure } from '../config/db.js';
 import { authMiddleware, requireAdmin } from '../middleware/auth.js';
 import { runAllotment } from '../lib/allotment.js';
 
@@ -8,19 +8,14 @@ const router = Router();
 // GET /admin/students – list students with approval status
 router.get('/students', authMiddleware, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
   try {
-    const students = await query<
-      {
-        Roll_No: string;
-        Name: string;
-        Email: string;
-        CGPA: number | null;
-        Status: string;
-        Department_ID: number | null;
-      }[]
-    >(`
-      SELECT Roll_No, Name, Email, CGPA, Status, Department_ID FROM STUDENT
-      ORDER BY Roll_No
-    `);
+    const students = await callProcedure<{
+      Roll_No: string;
+      Name: string;
+      Email: string;
+      CGPA: number | null;
+      Status: string;
+      Department_ID: number | null;
+    }>('sp_admin_list_students');
 
     res.json({
       students: students.map((s) => ({
@@ -44,14 +39,14 @@ router.patch('/:rollNo/approve', authMiddleware, requireAdmin, async (req: Reque
     const { rollNo } = req.params;
 
     // Check student exists
-    const students = await query<{ Roll_No: string }[]>('SELECT Roll_No FROM STUDENT WHERE Roll_No = ?', [rollNo]);
+    const students = await callProcedure<{ Roll_No: string }>('sp_student_exists_by_roll', [rollNo]);
     if (students.length === 0) {
       res.status(404).json({ error: 'Student not found' });
       return;
     }
 
     // Update status to active
-    await query('UPDATE STUDENT SET Status = ? WHERE Roll_No = ?', ['active', rollNo]);
+    await callProcedure('sp_admin_update_student_status', [rollNo, 'active']);
 
     res.json({ message: 'Student approved', roll_no: rollNo });
   } catch (err) {
@@ -66,14 +61,14 @@ router.patch('/:rollNo/reject', authMiddleware, requireAdmin, async (req: Reques
     const { rollNo } = req.params;
 
     // Check student exists
-    const students = await query<{ Roll_No: string }[]>('SELECT Roll_No FROM STUDENT WHERE Roll_No = ?', [rollNo]);
+    const students = await callProcedure<{ Roll_No: string }>('sp_student_exists_by_roll', [rollNo]);
     if (students.length === 0) {
       res.status(404).json({ error: 'Student not found' });
       return;
     }
 
     // Update status to inactive
-    await query('UPDATE STUDENT SET Status = ? WHERE Roll_No = ?', ['inactive', rollNo]);
+    await callProcedure('sp_admin_update_student_status', [rollNo, 'inactive']);
 
     res.json({ message: 'Student rejected', roll_no: rollNo });
   } catch (err) {
@@ -88,14 +83,14 @@ router.delete('/:rollNo', authMiddleware, requireAdmin, async (req: Request, res
     const { rollNo } = req.params;
 
     // Check student exists
-    const students = await query<{ Roll_No: string }[]>('SELECT Roll_No FROM STUDENT WHERE Roll_No = ?', [rollNo]);
+    const students = await callProcedure<{ Roll_No: string }>('sp_student_exists_by_roll', [rollNo]);
     if (students.length === 0) {
       res.status(404).json({ error: 'Student not found' });
       return;
     }
 
     // Delete student (cascade deletes preferences and enrollments via foreign keys)
-    await query('DELETE FROM STUDENT WHERE Roll_No = ?', [rollNo]);
+    await callProcedure('sp_admin_delete_student', [rollNo]);
 
     res.json({ message: 'Student deleted successfully', roll_no: rollNo });
   } catch (err) {
@@ -123,14 +118,14 @@ router.patch('/:rollNo/cgpa', authMiddleware, requireAdmin, async (req: Request,
     }
 
     // Check student exists
-    const students = await query<{ Roll_No: string }[]>('SELECT Roll_No FROM STUDENT WHERE Roll_No = ?', [rollNo]);
+    const students = await callProcedure<{ Roll_No: string }>('sp_student_exists_by_roll', [rollNo]);
     if (students.length === 0) {
       res.status(404).json({ error: 'Student not found' });
       return;
     }
 
     // Update CGPA
-    await query('UPDATE STUDENT SET CGPA = ? WHERE Roll_No = ?', [cgpaNum, rollNo]);
+    await callProcedure('sp_admin_update_student_cgpa', [rollNo, cgpaNum]);
 
     res.json({ message: 'CGPA updated successfully', roll_no: rollNo, cgpa: cgpaNum });
   } catch (err) {
@@ -170,8 +165,8 @@ router.post('/students/cgpa/bulk', authMiddleware, requireAdmin, async (req: Req
       }
 
       try {
-        const result = await query('UPDATE STUDENT SET CGPA = ? WHERE Roll_No = ?', [cgpaNum, roll_no]);
-        if ((result as any).affectedRows > 0) {
+        const result = await callProcedure<{ affected_rows: number }>('sp_admin_update_student_cgpa', [roll_no, cgpaNum]);
+        if ((result[0]?.affected_rows ?? 0) > 0) {
           updated++;
         } else {
           failed++;
@@ -198,36 +193,34 @@ router.post('/students/cgpa/bulk', authMiddleware, requireAdmin, async (req: Req
 // GET /admin/allotment/stats – get overall statistics
 router.get('/allotment/stats', authMiddleware, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
   try {
-    const studentCount = await query<{ count: string }[]>(
-      'SELECT COUNT(*) as count FROM STUDENT WHERE Status = "active"'
-    );
-    const pendingApprovalsCount = await query<{ count: string }[]>(
-      'SELECT COUNT(*) as count FROM STUDENT WHERE Status = "inactive"'
-    );
-    const courseCount = await query<{ count: string }[]>(
-      'SELECT COUNT(*) as count FROM COURSE WHERE Status = "active"'
-    );
-    const totalCapacity = await query<{ total: string | null }[]>(
-      'SELECT SUM(Capacity) as total FROM COURSE WHERE Status = "active"'
-    );
-    const allottedCount = await query<{ count: string }[]>(
-      'SELECT COUNT(*) as count FROM ENROLLMENT WHERE Status = "allotted"'
-    );
-    const waitlistedCount = await query<{ count: string }[]>(
-      'SELECT COUNT(*) as count FROM ENROLLMENT WHERE Status = "waitlisted"'
-    );
+    const stats = await callProcedure<{
+      active_students: string;
+      inactive_students: string;
+      active_courses: string;
+      total_capacity: string | null;
+      allotted_count: string;
+      waitlisted_count: string;
+    }>('sp_admin_allotment_stats');
+    const row = stats[0] ?? {
+      active_students: '0',
+      inactive_students: '0',
+      active_courses: '0',
+      total_capacity: '0',
+      allotted_count: '0',
+      waitlisted_count: '0',
+    };
 
-    const totalCap = parseInt(totalCapacity[0]?.total ?? '0', 10);
-    const allotted = parseInt(allottedCount[0]?.count ?? '0', 10);
+    const totalCap = parseInt(row.total_capacity ?? '0', 10);
+    const allotted = parseInt(row.allotted_count ?? '0', 10);
     const utilization = totalCap > 0 ? Math.round((allotted / totalCap) * 100) : 0;
 
     res.json({
-      total_students: parseInt(studentCount[0]?.count ?? '0', 10),
-      pending_approvals: parseInt(pendingApprovalsCount[0]?.count ?? '0', 10),
-      total_courses: parseInt(courseCount[0]?.count ?? '0', 10),
+      total_students: parseInt(row.active_students ?? '0', 10),
+      pending_approvals: parseInt(row.inactive_students ?? '0', 10),
+      total_courses: parseInt(row.active_courses ?? '0', 10),
       total_capacity: totalCap,
       seats_allotted: allotted,
-      seats_waitlisted: parseInt(waitlistedCount[0]?.count ?? '0', 10),
+      seats_waitlisted: parseInt(row.waitlisted_count ?? '0', 10),
       utilization_percent: utilization,
     });
   } catch (err) {
@@ -242,10 +235,9 @@ router.post('/allotment/run', authMiddleware, requireAdmin, async (_req: Request
     console.log('Starting allotment process...');
     
     // Check if all active students have CGPA assigned
-    const studentsMissingCGPA = await query<{ Roll_No: string; Name: string }[]>(`
-      SELECT Roll_No, Name FROM STUDENT 
-      WHERE Status = 'active' AND (CGPA IS NULL OR CGPA = 0)
-    `);
+    const studentsMissingCGPA = await callProcedure<{ Roll_No: string; Name: string }>(
+      'sp_admin_students_missing_cgpa'
+    );
     
     if (studentsMissingCGPA.length > 0) {
       res.status(400).json({ 
@@ -280,7 +272,7 @@ router.post('/allotment/clear', authMiddleware, requireAdmin, async (_req: Reque
     console.log('Clearing all allotments...');
     
     // Delete all enrollments
-    await query('DELETE FROM ENROLLMENT');
+    await callProcedure('sp_admin_clear_allotments');
     
     console.log('Allotments cleared');
     res.json({

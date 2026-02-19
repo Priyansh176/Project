@@ -1,4 +1,4 @@
-import { query } from '../config/db.js';
+import { callProcedure } from '../config/db.js';
 
 export interface StudentPreference {
   roll_no: string;
@@ -20,21 +20,7 @@ export interface AllotmentResult {
  * Load all preferences with student CGPA details and course type/slot info
  */
 async function loadPreferencesWithCGPA(): Promise<StudentPreference[]> {
-  const sql = `
-    SELECT 
-      p.STUDENT_Roll_No as roll_no,
-      s.CGPA as cgpa,
-      p.COURSE_Course_ID as course_id,
-      p.\`Rank\` as \`rank\`,
-      c.Course_Type as course_type,
-      c.Elective_Slot as elective_slot
-    FROM PREFERENCE p
-    JOIN STUDENT s ON p.STUDENT_Roll_No = s.Roll_No
-    JOIN COURSE c ON p.COURSE_Course_ID = c.Course_ID
-    WHERE s.Status = 'active'
-    ORDER BY s.CGPA DESC, p.\`Rank\` ASC
-  `;
-  return query<StudentPreference[]>(sql);
+  return callProcedure<StudentPreference>('sp_load_preferences_with_cgpa');
 }
 
 /**
@@ -60,11 +46,7 @@ async function loadPreferencesWithCGPA(): Promise<StudentPreference[]> {
  * Get course capacities
  */
 async function getCoursesCapacity(): Promise<Map<string, number>> {
-  const courses = await query<{ course_id: string; capacity: number }[]>(`
-    SELECT Course_ID as course_id, Capacity as capacity
-    FROM COURSE
-    WHERE Status = 'active'
-  `);
+  const courses = await callProcedure<{ course_id: string; capacity: number }>('sp_get_course_capacities');
 
   const capacities = new Map<string, number>();
   courses.forEach((c) => {
@@ -77,7 +59,7 @@ async function getCoursesCapacity(): Promise<Map<string, number>> {
  * Clear existing enrollments
  */
 async function clearEnrollments(): Promise<void> {
-  await query('DELETE FROM ENROLLMENT');
+  await callProcedure('sp_clear_enrollments');
 }
 
 /**
@@ -88,10 +70,7 @@ async function insertEnrollment(
   courseId: string,
   status: 'allotted' | 'waitlisted'
 ): Promise<void> {
-  await query(
-    'INSERT INTO ENROLLMENT (STUDENT_Roll_No, COURSE_Course_ID, Status) VALUES (?, ?, ?)',
-    [rollNo, courseId, status]
-  );
+  await callProcedure('sp_insert_enrollment', [rollNo, courseId, status]);
 }
 
 /**

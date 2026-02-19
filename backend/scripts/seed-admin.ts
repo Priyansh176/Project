@@ -24,10 +24,7 @@ async function main() {
     database: process.env.DB_NAME ?? 'course_allotment',
   });
   const hash = await bcrypt.hash(ADMIN_PASSWORD, 10);
-  await conn.execute(
-    'INSERT INTO ADMIN (Name, Email, Password) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE Name = ?, Password = ?',
-    [ADMIN_NAME, ADMIN_EMAIL, hash, ADMIN_NAME, hash]
-  );
+  await conn.execute('CALL sp_seed_admin(?, ?, ?)', [ADMIN_NAME, ADMIN_EMAIL, hash]);
   console.log(`Admin created: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
   await conn.end();
 }

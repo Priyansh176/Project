@@ -34,6 +34,25 @@ async function main() {
   await conn.query(sql);
   console.log('Database and tables created successfully.');
 
+  const proceduresPath = path.join(__dirname, 'procedures.sql');
+  const proceduresSql = readFileSync(proceduresPath, 'utf-8');
+  console.log('Creating stored procedures...');
+  const sanitized = proceduresSql
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim();
+      return trimmed.length > 0 && !trimmed.startsWith('--') && !trimmed.startsWith('DELIMITER');
+    })
+    .join('\n');
+  const statements = sanitized
+    .split('$$')
+    .map((stmt) => stmt.trim())
+    .filter((stmt) => stmt.length > 0);
+  for (const stmt of statements) {
+    await conn.query(stmt);
+  }
+  console.log('Stored procedures created successfully.');
+
   await conn.end();
   process.exit(0);
 }

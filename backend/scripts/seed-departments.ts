@@ -21,7 +21,7 @@ async function main() {
     database: process.env.DB_NAME ?? 'course_allotment',
   });
   for (const name of DEPARTMENTS) {
-    await conn.execute('INSERT IGNORE INTO DEPARTMENT (Department_Name) VALUES (?)', [name]);
+    await conn.execute('CALL sp_seed_department(?)', [name]);
   }
   console.log('Departments seeded:', DEPARTMENTS.join(', '));
   await conn.end();

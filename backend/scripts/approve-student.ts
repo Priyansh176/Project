@@ -16,8 +16,10 @@ async function main() {
     password: process.env.DB_PASSWORD ?? '',
     database: process.env.DB_NAME ?? 'course_allotment',
   });
-  const [r] = await conn.execute("UPDATE STUDENT SET Status = 'active' WHERE Email = ?", [email]);
-  console.log('Approved:', (r as { affectedRows: number }).affectedRows, 'student(s)');
+  const [rows] = await conn.query('CALL sp_approve_student_by_email(?)', [email]);
+  const resultSets = rows as Array<Array<{ affected_rows: number }>>;
+  const affected = resultSets[0]?.[0]?.affected_rows ?? 0;
+  console.log('Approved:', affected, 'student(s)');
   await conn.end();
 }
 
